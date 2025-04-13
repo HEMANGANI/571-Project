@@ -1,7 +1,6 @@
 UID,iso2,iso3,code3,FIPS,Admin2,Province_State,Country_Region,Lat,Long_,Combined_Key,Population
 4,AF,AFG,4,,,,Afghanistan,33.93911,67.709953,Afghanistan,38928341
 8,AL,ALB,8,,,,Albania,41.1533,20.1683,Albania,2877800
-10,AQ,ATA,10,,,,Antarctica,-71.9499,23.347,Antarctica,
 12,DZ,DZA,12,,,,Algeria,28.0339,1.6596,Algeria,43851043
 20,AD,AND,20,,,,Andorra,42.5063,1.5218,Andorra,77265
 24,AO,AGO,24,,,,Angola,-11.2027,17.8739,Angola,32866268
@@ -138,7 +137,6 @@ UID,iso2,iso3,code3,FIPS,Admin2,Province_State,Country_Region,Lat,Long_,Combined
 208,DK,DNK,208,,,,Denmark,56.2639,9.5018,Denmark,5837213
 234,FO,FRO,234,,,Faroe Islands,Denmark,61.8926,-6.9118,"Faroe Islands, Denmark",48865
 304,GL,GRL,304,,,Greenland,Denmark,71.7069,-42.6043,"Greenland, Denmark",56772
-9999,,,,,,,Diamond Princess,,,Diamond Princess,
 262,DJ,DJI,262,,,,Djibouti,11.8251,42.5903,Djibouti,988002
 212,DM,DMA,212,,,,Dominica,15.415,-61.371,Dominica,71991
 214,DO,DOM,214,,,,Dominican Republic,18.7357,-70.1627,Dominican Republic,10847904
@@ -443,7 +441,6 @@ UID,iso2,iso3,code3,FIPS,Admin2,Province_State,Country_Region,Lat,Long_,Combined
 499,ME,MNE,499,,,,Montenegro,42.708678,19.37439,Montenegro,628062
 504,MA,MAR,504,,,,Morocco,31.7917,-7.0926,Morocco,36910558
 508,MZ,MOZ,508,,,,Mozambique,-18.665695,35.529562,Mozambique,31255435
-8888,,,,,,,MS Zaandam,,,MS Zaandam,
 516,NA,NAM,516,,,,Namibia,-22.9576,18.4904,Namibia,2540916
 520,NR,NRU,520,,,,Nauru,-0.5228,166.9315,Nauru,10834
 524,NP,NPL,524,,,,Nepal,28.1667,84.25,Nepal,29136808
@@ -511,8 +508,6 @@ UID,iso2,iso3,code3,FIPS,Admin2,Province_State,Country_Region,Lat,Long_,Combined
 56638,NG,NGA,566,,,Unknown,Nigeria,,,"Unknown, Nigeria",
 807,MK,MKD,807,,,,North Macedonia,41.6086,21.7453,North Macedonia,2083380
 578,NO,NOR,578,,,,Norway,60.472,8.4689,Norway,5421242
-2020,,,,,,,Summer Olympics 2020,35.6491,139.7737,Summer Olympics 2020,
-2022,,,,,,,Winter Olympics 2022,39.9042,116.4074,Winter Olympics 2022,
 512,OM,OMN,512,,,,Oman,21.512583,55.923255,Oman,5106622
 586,PK,PAK,586,,,,Pakistan,30.3753,69.3451,Pakistan,220892331
 58601,PK,PAK,586,,,Azad Jammu and Kashmir,Pakistan,34.027401,73.947253,"Azad Jammu and Kashmir, Pakistan",4045366
@@ -875,7 +870,6 @@ UID,iso2,iso3,code3,FIPS,Admin2,Province_State,Country_Region,Lat,Long_,Combined
 12410,CA,CAN,124,,,Quebec,Canada,52.9399,-73.5491,"Quebec, Canada",8604495
 12411,CA,CAN,124,,,Saskatchewan,Canada,52.9399,-106.4509,"Saskatchewan, Canada",1179844
 12412,CA,CAN,124,,,Yukon,Canada,64.2823,-135,"Yukon, Canada",42986
-12413,CA,CAN,124,,,Diamond Princess,Canada,,,"Diamond Princess, Canada",
 12414,CA,CAN,124,,,Grand Princess,Canada,,,"Grand Princess, Canada",
 12415,CA,CAN,124,,,Recovered,Canada,,,"Recovered, Canada",
 12416,CA,CAN,124,,,Nunavut,Canada,70.2998,-83.1076,"Nunavut, Canada",39403
@@ -1000,7 +994,6 @@ UID,iso2,iso3,code3,FIPS,Admin2,Province_State,Country_Region,Lat,Long_,Combined
 63072153,PR,PRI,630,72153,Yauco,Puerto Rico,US,18.080374,-66.858814,"Yauco, Puerto Rico, US",33575
 63072888,PR,PRI,630,72888,Out of PR,Puerto Rico,US,,,"Out of PR, Puerto Rico, US",
 63072999,PR,PRI,630,72999,Unassigned,Puerto Rico,US,,,"Unassigned, Puerto Rico, US",
-84088888,US,USA,840,88888,,Diamond Princess,US,,,"Diamond Princess, US",
 84099999,US,USA,840,99999,,Grand Princess,US,,,"Grand Princess, US",
 84000001,US,USA,840,01,,Alabama,US,32.3182,-86.9023,"Alabama, US",4903185
 84000002,US,USA,840,02,,Alaska,US,61.3707,-152.4044,"Alaska, US",731545
