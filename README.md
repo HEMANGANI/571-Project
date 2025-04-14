@@ -16,34 +16,34 @@ We have completed the initial data processing phase and have developed three sep
 ### Current Visualizations
 
 #### 1. Country-wise Bar Chart Analysis (by Hemangani Nagarajan)
-- Located in: `visualization1_bar_chart/` folder
+- Located in: `Visualization1_bar_chart/` folder
 - Features:
   - Breakdown of COVID-19 cases by country
   - Analysis of different pandemic waves across regions
   - Interactive time interval selection
   - Comparative view of pandemic impact across countries
 
-For details on implementation and usage, see the [Bar Chart Visualization README](visualization1_bar_chart/README.md).
+For details on implementation and usage, see the [Bar Chart Visualization README](Visualization1_bar_chart/README.md).
 
 #### 2. US State-wise Time Series Analysis (by Varshini Venkataraman)
-- Located in: `visualization2_us_line_chart/` folder
+- Located in: `Visualization2_us_line_chart/` folder
 - Features:
   - Line chart visualization of COVID-19 spread across US states
   - Time series analysis of cases and deaths
   - Interactive state selection and comparison
   - Trend analysis for individual states
 
-For implementation details, refer to the [US Line Chart Visualization README](visualization2_us_line_chart/README.md).
+For implementation details, refer to the [US Line Chart Visualization README](Visualization2_us_line_chart/README.md).
 
 #### 3. Country-wise Time Series Analysis (by Kavisha Parikh)
-- Located in: `visualization3_global_line_chart/` folder
+- Located in: `Visualization3_global_line_chart/` folder
 - Features:
   - Global time series data visualization by country
   - Interactive country selection for comparison
   - Pandemic progression analysis across different regions
   - Identification of key infection periods globally
 
-For more information, check the [Global Line Chart Visualization README](visualization3_global_line_chart/README.md).
+For more information, check the [Global Line Chart Visualization README](Visualization3_global_line_chart/README.md).
 
 ## Dataset Notes
 - We are using data from the JHU CSSE COVID-19 Dataset
