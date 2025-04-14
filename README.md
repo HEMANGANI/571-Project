@@ -24,6 +24,8 @@ Displays a cumulative count of the selected metric, plotted against time:
 Built with **D3.js** for dynamic SVG rendering and smooth user interactions.
 
 ---
+![Visualization](visualization.jpg)
+
 
 ## Timeline Selection
 The application features a powerful interactive timeline slider that allows users to:
@@ -85,19 +87,3 @@ The chart will update to display time series data for that state.
 - Resize the selection to zoom in or out of time intervals
 
 ---
-
-## Browser Compatibility
-- Google Chrome (recommended)
-- Mozilla Firefox
-- Safari
-- Microsoft Edge
-
----
-
-## Data Source
-- [Johns Hopkins University CSSE COVID-19 Dataset](https://github.com/CSSEGISandData/COVID-19)
-
----
-
-## Credits
-Developed as a COVID-19 data analysis and visualization project using modern web technologies like D3.js.
