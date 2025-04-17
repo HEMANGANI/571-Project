@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>COVID-19 Global Data Visualization</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 10px;
+      background-color: #f5f5f5;
+    }
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      background-color: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
+      margin-bottom: 10px;
+      padding: 10px;
+      background-color: #f0f0f0;
+      border-radius: 5px;
+    }
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .date-range-control {
+      width: 100%;
+      padding: 0;
+    }
+    .slider-container {
+      width: 100%;
+      margin: 0 auto;
+      padding: 10px;
+    }
+    .slider-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 0px;
+      font-size: 0px;
+    }
+    select, button {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    button {
+      background-color: #676967;
+      color: white;
+      cursor: pointer;
+      border: none;
+    }
+    button:hover {
+      background-color: #768877;
+    }
+    .chart-container {
+      width: 100%;
+      height: 500px;
+      position: relative;
+    }
+    .tooltip {
+      position: absolute;
+      padding: 10px;
+      background-color: rgba(0,0,0,0.7);
+      color: white;
+      border-radius: 5px;
+      pointer-events: none;
+      font-size: 14px;
+      display: none;
+      text-align: center;
+      z-index: 100;
+      max-width: 200px;
+    }
+    .bar {
+      fill: #4ca0af;
+      transition: fill 0.3s;
+    }
+    .bar:hover {
+      fill: #465a47;
+    }
+    .axis-label {
+      font-size: 14px;
+      text-anchor: middle;
+      font-weight: bold;
+    }
+    #loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 20px;
+      color: #666;
+    }
+    .error-message {
+      color: #d9534f;
+      text-align: center;
+      font-weight: bold;
+      margin: 20px 0;
+    }
+    .date-display {
+      text-align: center;
+      font-weight: bold;
+      margin: 10px 0;
+      color: #333;
+    }
+    /* D3 brush styles */
+    .brush .selection {
+      fill: #4b4d4b;
+      fill-opacity: 0.3;
+      stroke: #515b51;
+      stroke-width: 1px;
+    }
+    .brush .handle {
+      fill: #515b51;
+    }
+    .brush .overlay {
+      pointer-events: all;
+    }
+    /* Timeline axis styles */
+    .timeline-axis text {
+      font-size: 10px;
+    }
+    /* Responsive design */
+    @media (max-width: 768px) {
+      .container {
+        padding: 10px;
+      }
+      .chart-container {
+        height: 400px;
+      }
+      h1 {
+        font-size: 1.5rem;
+      }
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h1>COVID-19 Global Data Visualization</h1>
+    
+    <div class="controls">
+      <div class="control-group">
+        <label for="dataType">Data Type:</label>
+        <select id="dataType">
+          <option value="confirmed">Confirmed Cases</option>
+          <option value="deaths">Deaths</option>
+        </select>
+      </div>
+      
+      <div class="control-group">
+        <label for="normalize">
+          <input type="checkbox" id="normalize"> Normalize by Population
+        </label>
+      </div>
+      
+      <div class="control-group">
+        <label for="topCountries">Top Countries:</label>
+        <select id="topCountries">
+          <option value="10">Top 10</option>
+          <option value="20" selected>Top 20</option>
+          <option value="30">Top 30</option>
+          <option value="all">All Countries</option>
+        </select>
+      </div>
+      
+      <div class="date-range-control">
+        <div class="date-display">
+          <span id="startDateDisplay"></span> - <span id="endDateDisplay"></span>
+        </div>
+        <div class="slider-container">
+          <svg id="timeline" width="100%" height="60"></svg>
+          <div class="slider-labels">
+            <span id="minDateLabel"></span>
+            <span id="maxDateLabel"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="chart-container">
+      <div id="loading">Loading data...</div>
+      <div id="error-message" class="error-message" style="display: none;"></div>
+      <div id="tooltip" class="tooltip"></div>
+      <svg id="chart"></svg>
+    </div>
+  </div>
+
+  <script>
+    // Global variables for data and state
+    const state = {
+      confirmedData: [],
+      deathsData: [],
+      populationData: {},
+      dates: [],
+      startDateIndex: 0,
+      endDateIndex: 0,
+      currentDataType: 'confirmed',
+      isNormalized: false,
+      topN: 20,
+      dataLoaded: false,
+      margin: { top: 50, right: 30, bottom: 120, left: 80 },
+      width: 0,
+      height: 0
+    };
+    
+    // D3 selections for elements
+    const elements = {
+      chart: d3.select("#chart"),
+      tooltip: d3.select("#tooltip"),
+      loading: d3.select("#loading"),
+      error: d3.select("#error-message"),
+      dataTypeSelect: d3.select("#dataType"),
+      normalizeCheckbox: d3.select("#normalize"),
+      topCountriesSelect: d3.select("#topCountries"),
+      startDateDisplay: d3.select("#startDateDisplay"),
+      endDateDisplay: d3.select("#endDateDisplay"),
+      minDateLabel: d3.select("#minDateLabel"),
+      maxDateLabel: d3.select("#maxDateLabel"),
+      timeline: d3.select("#timeline")
+    };
+    
+    // Calculate chart dimensions based on container size
+    function getChartDimensions() {
+      const containerWidth = d3.select('.chart-container').node().clientWidth;
+      const width = Math.max(containerWidth - state.margin.left - state.margin.right, 300);
+      const height = 500 - state.margin.top - state.margin.bottom;
+      return { width, height };
+    }
+    
+    // Update dimensions and store them in state
+    function updateDimensions() {
+      const dimensions = getChartDimensions();
+      state.width = dimensions.width;
+      state.height = dimensions.height;
+      // Update SVG dimensions
+      elements.chart
+        .attr("width", state.width + state.margin.left + state.margin.right)
+        .attr("height", state.height + state.margin.top + state.margin.bottom);
+      // Update axis labels and title positions
+      d3.select(".x-label")
+        .attr("x", state.width / 2)
+        .attr("y", state.height + 90);
+      d3.select(".y-label")
+        .attr("x", -state.height / 2);
+      d3.select(".chart-title")
+        .attr("x", state.width / 2);
+    }
+    
+    // Initialize the SVG and axes
+    function setupChart() {
+      // Update dimensions first
+      updateDimensions();
+      // Clear any existing content
+      elements.chart.selectAll("*").remove();
+      // Create the main group with margin transform
+      const svg = elements.chart
+        .append("g")
+        .attr("transform", `translate(${state.margin.left},${state.margin.top})`);
+      // Add axes groups
+      svg.append("g")
+        .attr("class", "x-axis")
+        .attr("transform", `translate(0,${state.height})`);
+      svg.append("g")
+        .attr("class", "y-axis");
+      // Add axis labels
+      svg.append("text")
+        .attr("class", "axis-label x-label")
+        .attr("x", state.width / 2)
+        .attr("y", state.height + 90)
+        .text("Countries");
+      svg.append("text")
+        .attr("class", "axis-label y-label")
+        .attr("transform", "rotate(-90)")
+        .attr("x", -state.height / 2)
+        .attr("y", -50)
+        .text("Total Cases");
+      // Add chart title
+      svg.append("text")
+        .attr("class", "chart-title")
+        .attr("x", state.width / 2)
+        .attr("y", -20)
+        .attr("text-anchor", "middle")
+        .style("font-size", "18px")
+        .style("font-weight", "bold")
+        .text("COVID-19 Cases by Country");
+    }
+    
+    // Main initialization function
+    function init() {
+      // Setup the initial chart
+      setupChart();
+      // Register event listeners
+      setupEventListeners();
+      // Register resize handler
+      d3.select(window).on('resize', handleResize);
+      // Load data
+      loadData();
+    }
+    
+    // Setup all event listeners
+    function setupEventListeners() {
+      elements.dataTypeSelect.on('change', function() {
+        state.currentDataType = d3.select(this).property('value');
+        updateVisualization();
+      });
+      elements.normalizeCheckbox.on('change', function() {
+        state.isNormalized = d3.select(this).property('checked');
+        updateVisualization();
+      });
+      elements.topCountriesSelect.on('change', function() {
+        state.topN = d3.select(this).property('value');
+        updateVisualization();
+      });
+    }
+    
+    // Handle window resize
+    function handleResize() {
+      updateDimensions();
+      if (state.dataLoaded) {
+        setupD3Timeline();
+        updateVisualization();
+      }
+    }
+    
+    // Show/hide loading indicator
+    function showLoading(show) {
+      elements.loading.style('display', show ? 'block' : 'none');
+    }
+    
+    // Show error message
+    function showError(message) {
+      elements.error
+        .text(message)
+        .style('display', 'block');
+    }
+    
+    // Hide error message
+    function hideError() {
+      elements.error.style('display', 'none');
+    }
+    
+    // Load all data
+    function loadData() {
+      showLoading(true);
+      hideError();
+      Promise.all([
+        d3.csv('data/time_series_covid19_confirmed_global.csv'),
+        d3.csv('data/time_series_covid19_deaths_global.csv'),
+        d3.csv('data/UID_ISO_FIPS_LookUp_Table.csv')
+      ]).then(([confirmedData, deathsData, populationData]) => {
+        // Store the data
+        state.confirmedData = confirmedData;
+        state.deathsData = deathsData;
+        // Process population data
+        state.populationData = {};
+        populationData.forEach(row => {
+          if (row.Country_Region && row.Population) {
+            if (!row.Province_State || row.Province_State.trim() === '') {
+              state.populationData[row.Country_Region] = +row.Population;
+            }
+          }
+        });
+        // Extract dates (excluding the first 4 columns)
+        if (confirmedData.length > 0) {
+          const firstRow = confirmedData[0];
+          state.dates = Object.keys(firstRow).filter(key => 
+            !['Province/State', 'Country/Region', 'Lat', 'Long'].includes(key)
+          );
+          // Set default values
+          state.startDateIndex = 0;
+          state.endDateIndex = state.dates.length - 1;
+          state.dataLoaded = true;
+          // Setup timeline
+          setupD3Timeline();
+          updateDateDisplay();
+          // Update visualization
+          updateVisualization();
+        } else {
+          throw new Error('No data found in the CSV files');
+        }
+      }).catch(error => {
+        console.error('Error loading data:', error);
+        showError(`Error loading data: ${error.message || 'Please check the console for details.'}`);
+      }).finally(() => {
+        showLoading(false);
+      });
+    }
+    
+    // Format date for display
+    function formatDate(dateStr) {
+      try {
+        const parts = dateStr.split('/');
+        if (parts.length === 3) {
+          // Format is MM/DD/YY
+          const month = parseInt(parts[0]);
+          const day = parseInt(parts[1]);
+          const year = 2000 + parseInt(parts[2]);
+          return `${month}/${day}/${year}`;
+        }
+        return dateStr; // Return as is if format is different
+      } catch (e) {
+        return dateStr;
+      }
+    }
+    
+    // Update date display elements
+    function updateDateDisplay() {
+      elements.startDateDisplay.text(formatDate(state.dates[state.startDateIndex]));
+      elements.endDateDisplay.text(formatDate(state.dates[state.endDateIndex]));
+    }
+    
+    // Setup D3 timeline with brush
+    function setupD3Timeline() {
+      // Clear existing content
+      elements.timeline.selectAll("*").remove();
+      // Get timeline dimensions
+      const timelineWidth = d3.select('.slider-container').node().clientWidth * 0.9;
+      const timelineHeight = 40;
+      const timelineMargin = { top: 10, right: 20, bottom: 20, left: 20 };
+      // Create the timeline SVG
+      const timelineSvg = elements.timeline
+        .attr("width", timelineWidth + timelineMargin.left + timelineMargin.right)
+        .attr("height", timelineHeight + timelineMargin.top + timelineMargin.bottom)
+        .append("g")
+        .attr("transform", `translate(${timelineMargin.left},${timelineMargin.top})`);
+      // Create scale for timeline
+      const timelineScale = d3.scaleLinear()
+        .domain([0, state.dates.length - 1])
+        .range([0, timelineWidth]);
+      // Create axis for timeline
+      const timelineAxis = d3.axisBottom(timelineScale)
+        .tickFormat(d => {
+          const index = Math.floor(d);
+          return index >= 0 && index < state.dates.length ? formatDate(state.dates[index]) : '';
+        })
+        .tickValues([0, Math.floor(state.dates.length / 4), Math.floor(state.dates.length / 2), 
+                    Math.floor(3 * state.dates.length / 4), state.dates.length - 1]);
+      // Add axis to timeline
+      timelineSvg.append("g")
+        .attr("class", "timeline-axis")
+        .attr("transform", `translate(0,${timelineHeight})`)
+        .call(timelineAxis);
+      // Add brush to timeline
+      const brush = d3.brushX()
+        .extent([[0, 0], [timelineWidth, timelineHeight]])
+        .on("brush end", brushed);
+      // Add brush to timeline
+      const brushGroup = timelineSvg.append("g")
+        .attr("class", "brush")
+        .call(brush);
+      // Set initial brush selection (select all dates)
+      brushGroup.call(brush.move, [0, timelineWidth]);
+      // Update min and max date labels
+      elements.minDateLabel.text(formatDate(state.dates[0]));
+      elements.maxDateLabel.text(formatDate(state.dates[state.dates.length - 1]));
+      // Function to handle brush events
+      function brushed(event) {
+        if (event.sourceEvent && event.sourceEvent.type === "zoom") return; // ignore brush-by-zoom
+        if (event.selection) {
+          // Convert pixel positions to date indices
+          const [x0, x1] = event.selection;
+          state.startDateIndex = Math.round(timelineScale.invert(x0));
+          state.endDateIndex = Math.round(timelineScale.invert(x1));
+          // Ensure indices are within bounds
+          state.startDateIndex = Math.max(0, Math.min(state.startDateIndex, state.dates.length - 1));
+          state.endDateIndex = Math.max(0, Math.min(state.endDateIndex, state.dates.length - 1));
+          // Update date display
+          updateDateDisplay();
+          // Update visualization
+          updateVisualization();
+        }
+      }
+    }
+    
+    // Prepare data for visualization
+    function prepareData() {
+      // Select the appropriate dataset
+      let sourceData = state.currentDataType === 'confirmed' ? state.confirmedData : state.deathsData;
+      if (!sourceData || !Array.isArray(sourceData) || sourceData.length === 0) {
+        throw new Error(`No data available for ${state.currentDataType}`);
+      }
+      // Aggregate data by country
+      const countryData = aggregateByCountryAndDateRange(sourceData);
+      // Apply normalization if needed
+      if (state.isNormalized && state.populationData) {
+        Object.keys(countryData).forEach(country => {
+          const population = state.populationData[country];
+          if (population && population > 0) {
+            countryData[country] = (countryData[country] / population) * 100000; // Per 100,000 people
+          } else {
+            // If population data is missing, leave the value as is but log a warning
+            console.warn(`No population data for ${country}`);
+          }
+        });
+      }
+      // Convert to array
+      let dataArray = Object.entries(countryData)
+        .filter(([_, value]) => value > 0 && !isNaN(value))
+        .map(([country, value]) => ({
+          country,
+          value
+        }));
+      // Sort by value in descending order
+      dataArray.sort((a, b) => d3.descending(a.value, b.value));
+      // Limit to top N countries if specified
+      if (state.topN !== 'all') {
+        dataArray = dataArray.slice(0, +state.topN);
+      }
+      return dataArray;
+    }
+    
+    // Aggregate data by country and date range
+    function aggregateByCountryAndDateRange(data) {
+      const countryData = {};
+      // Get the date range
+      const endDate = state.dates[state.endDateIndex];
+      const startDatePrev = state.startDateIndex > 0 ? state.dates[state.startDateIndex - 1] : null;
+      data.forEach(row => {
+        if (!row) return;
+        const country = row['Country/Region'];
+        if (!country) return;
+        // Initialize country data if not exists
+        if (!countryData[country]) {
+          countryData[country] = 0;
+        }
+        // Get the value at the end date
+        const endValue = +row[endDate] || 0;
+        // Get the value at the day before the start date, or 0 if start date is the first date
+        const startValue = startDatePrev 
+          ? +row[startDatePrev] || 0 
+          : 0;
+        // Add the difference to the country total
+        const increment = Math.max(0, endValue - startValue); // Ensure it's not negative
+        countryData[country] += increment;
+      });
+      return countryData;
+    }
+    
+    // Update chart labels based on current selections
+    function updateChartLabels() {
+      let yLabelText, titleText;
+      if (state.currentDataType === 'confirmed') {
+        titleText = "COVID-19 Confirmed Cases by Country";
+        yLabelText = state.isNormalized ? "Cases per 100,000 people" : "Total Cases";
+      } else {
+        titleText = "COVID-19 Deaths by Country";
+        yLabelText = state.isNormalized ? "Deaths per 100,000 people" : "Total Deaths";
+      }
+      const dateRangeText = `(${formatDate(state.dates[state.startDateIndex])} to ${formatDate(state.dates[state.endDateIndex])})`;
+      d3.select(".chart-title")
+        .text(`${titleText} ${dateRangeText}`);
+      d3.select(".y-label")
+        .text(yLabelText);
+    }
+    
+    // Draw the bar chart
+    function drawBarChart(data) {
+      // Get the chart's container group
+      const svg = elements.chart.select("g");
+      if (!data || data.length === 0) {
+        // Clear the chart if there's no data
+        svg.selectAll(".bar").remove();
+        return;
+      }
+      // Create scales
+      const xScale = d3.scaleBand()
+        .domain(data.map(d => d.country))
+        .range([0, state.width])
+        .padding(0.2);
+      const yScale = d3.scaleLinear()
+        .domain([0, d3.max(data, d => d.value) * 1.1]) // Add 10% padding at the top
+        .range([state.height, 0]);
+      // Update axes with D3 transitions
+      const xAxis = d3.axisBottom(xScale);
+      const yAxis = d3.axisLeft(yScale)
+        .ticks(10)
+        .tickFormat(d3.format(".2~s"));
+      // Update X axis with transition
+      svg.select(".x-axis")
+        .transition()
+        .duration(500)
+        .call(xAxis)
+        .selectAll("text")
+        .style("text-anchor", "end")
+        .attr("dx", "-.8em")
+        .attr("dy", ".15em")
+        .attr("transform", "rotate(-45)");
+      // Update Y axis with transition
+      svg.select(".y-axis")
+        .transition()
+        .duration(500)
+        .call(yAxis);
+      // Create a D3 data join for the bars
+      const bars = svg.selectAll(".bar")
+        .data(data, d => d.country);
+      // Handle exit selection (removing bars)
+      bars.exit()
+        .transition()
+        .duration(500)
+        .attr("y", state.height)
+        .attr("height", 0)
+        .remove();
+      // Handle enter selection (adding new bars)
+      const barsEnter = bars.enter()
+        .append("rect")
+        .attr("class", "bar")
+        .attr("x", d => xScale(d.country))
+        .attr("width", xScale.bandwidth())
+        .attr("y", state.height)
+        .attr("height", 0);
+      // Add event handlers for tooltips
+      barsEnter
+        .on("mouseover", (event, d) => {
+          showTooltip(event, d);
+        })
+        .on("mousemove", (event) => {
+          moveTooltip(event);
+        })
+        .on("mouseout", () => {
+          hideTooltip();
+        });
+      // Animate the new bars
+      barsEnter
+        .transition()
+        .duration(500)
+        .attr("y", d => yScale(d.value))
+        .attr("height", d => state.height - yScale(d.value));
+      // Update existing bars
+      bars
+        .transition()
+        .duration(500)
+        .attr("x", d => xScale(d.country))
+        .attr("width", xScale.bandwidth())
+        .attr("y", d => yScale(d.value))
+        .attr("height", d => state.height - yScale(d.value));
+    }
+    
+    // Show tooltip
+    function showTooltip(event, d) {
+      // Build tooltip content
+      let content = `<strong>${d.country}</strong><br>`;
+      content += state.isNormalized 
+        ? `${d3.format(",.2f")(d.value)} per 100,000 people` 
+        : `${d3.format(",")(d.value)}`;
+      // Update and show tooltip
+      elements.tooltip
+        .html(content)
+        .style("display", "block");
+      // Position the tooltip
+      moveTooltip(event);
+    }
+    
+    // Move tooltip with mouse
+    function moveTooltip(event) {
+      const chartRect = document.querySelector('.chart-container').getBoundingClientRect();
+      // Calculate position relative to the chart container
+      const mouseX = event.clientX - chartRect.left;
+      const mouseY = event.clientY - chartRect.top;
+      // Get tooltip dimensions
+      const tooltipNode = elements.tooltip.node();
+      const tooltipWidth = tooltipNode.offsetWidth;
+      const tooltipHeight = tooltipNode.offsetHeight;
+      // Calculate position to avoid going off the chart
+      let left = mouseX + 10;
+      let top = mouseY + 10;
+      // Adjust if tooltip would go off right edge
+      if (left + tooltipWidth > chartRect.width) {
+        left = mouseX - tooltipWidth - 10;
+      }
+      // Adjust if tooltip would go off bottom edge
+      if (top + tooltipHeight > chartRect.height) {
+        top = mouseY - tooltipHeight - 10;
+      }
+      // Apply position
+      elements.tooltip
+        .style("left", `${left}px`)
+        .style("top", `${top}px`);
+    }
+    
+    // Hide tooltip
+    function hideTooltip() {
+      elements.tooltip.style("display", "none");
+    }
+    
+    // Main update function for the visualization
+    function updateVisualization() {
+      if (!state.dataLoaded) {
+        console.warn('Data not yet loaded, cannot update visualization');
+        return;
+      }
+      try {
+        showLoading(true);
+        hideError();
+        // Prepare data for visualization
+        const data = prepareData();
+        // Draw the bar chart
+        drawBarChart(data);
+        // Update chart labels
+        updateChartLabels();
+      } catch (error) {
+        console.error('Error updating visualization:', error);
+        showError(`Error updating chart: ${error.message}`);
+      } finally {
+        showLoading(false);
+      }
+    }
+    
+    // Initialize the application when the DOM is ready
+    d3.select(document).on('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
