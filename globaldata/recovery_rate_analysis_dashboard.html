@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>COVID Recovery Rate Dashboard</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      margin: 20px;
+    }
+    .controls {
+      margin: 20px auto;
+    }
+    label {
+      margin: 0 10px;
+    }
+    .tooltip {
+      position: absolute;
+      opacity: 0;
+      padding: 10px;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      border-radius: 5px;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>COVID-19 Recovery Rate Dashboard</h2>
+  <p style="font-weight: bold;">
+    Recovery Rate = (Total Recovered / Total Confirmed Cases) × 100
+  </p>
+
+  <div class="controls">
+    <label>
+      Top N countries:
+      <input type="number" id="topN" value="10" min="1" max="50" />
+    </label>
+    <label>
+      Year:
+      <select id="yearSelect"></select>
+    </label>
+    <label>
+      Min cases threshold:
+      <input type="number" id="minCases" value="10000" min="0" />
+    </label>
+    <label>
+      Sort order:
+      <select id="sortOrder">
+        <option value="desc">Descending</option>
+        <option value="asc" selected>Ascending</option>
+      </select>
+    </label>
+  </div>
+
+  <div style="position: relative;">
+    <svg id="chart" width="900" height="600"></svg>
+    <div class="tooltip" id="tooltip"></div>
+  </div>
+
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script>
+    const svg = d3.select("#chart");
+    const tooltip = document.getElementById("tooltip");
+    const topNInput = document.getElementById("topN");
+    const yearSelect = document.getElementById("yearSelect");
+    const minCasesInput = document.getElementById("minCases");
+    const sortOrderSelect = document.getElementById("sortOrder");
+
+    const margin = { top: 50, right: 50, bottom: 100, left: 80 };
+    const width = 900, height = 600;
+    const innerWidth = width - margin.left - margin.right;
+    const innerHeight = height - margin.top - margin.bottom;
+
+    let dataByYear = {}; // { year: [countryData, ...] }
+
+    function processData(rawData, year) {
+      const yearColumns = Object.keys(rawData[0]).filter(col => col.match(/^\d{1,2}\/\d{1,2}\/\d{2}$/));
+      const columnsForYear = yearColumns.filter(dateStr => new Date(dateStr).getFullYear() === +year);
+
+      return d3.rollup(
+        rawData,
+        v => d3.sum(v, row => d3.sum(columnsForYear, key => +row[key])),
+        d => d['Country/Region']
+      );
+    }
+
+    async function loadData() {
+      try {
+        const [confirmed, deaths, recovered] = await Promise.all([
+          d3.csv('data/confirmed.csv'),
+          d3.csv('data/death.csv'),
+          d3.csv('data/recovery.csv')
+        ]);
+
+        const allYears = [...new Set(
+          Object.keys(confirmed[0])
+            .slice(4)
+            .map(d => new Date(d).getFullYear())
+        )].sort();
+
+        allYears.forEach(year => {
+          const confirmedTotals = processData(confirmed, year);
+          const deathsTotals = processData(deaths, year);
+          const recoveredTotals = processData(recovered, year);
+
+          dataByYear[year] = Array.from(confirmedTotals.entries()).map(([country, cases]) => ({
+            country,
+            cases,
+            deaths: deathsTotals.get(country) || 0,
+            recovered: recoveredTotals.get(country) || 0
+          }));
+        });
+
+        yearSelect.innerHTML = allYears.map(y => `<option value="${y}">${y}</option>`).join("");
+        updateRecoveryChart();
+      } catch (error) {
+        console.error("Error loading data:", error);
+      }
+    }
+
+    function drawRecoveryChart(topN, year, minCases, sortOrder) {
+      svg.selectAll("*").remove();
+
+      const countries = dataByYear[year]
+        .filter(d => d.cases >= minCases && d.recovered >= 0)
+        .map(d => ({
+          country: d.country,
+          cases: d.cases,
+          recovered: d.recovered,
+          recoveryRate: (d.recovered / d.cases) * 100
+        }))
+        .sort((a, b) => sortOrder === "asc"
+          ? a.recoveryRate - b.recoveryRate
+          : b.recoveryRate - a.recoveryRate)
+        .slice(0, topN);
+
+      const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+      const x = d3.scaleBand()
+        .domain(countries.map(d => d.country))
+        .range([0, innerWidth])
+        .padding(0.2);
+
+      const y = d3.scaleLinear()
+        .domain([0, 100])
+        .nice()
+        .range([innerHeight, 0]);
+
+      g.append("g")
+        .attr("transform", `translate(0,${innerHeight})`)
+        .call(d3.axisBottom(x))
+        .selectAll("text")
+        .attr("transform", "rotate(-45)")
+        .style("text-anchor", "end");
+
+      g.append("g")
+        .call(d3.axisLeft(y).ticks(10).tickFormat(d => d + "%"));
+
+      g.selectAll("rect")
+        .data(countries)
+        .enter()
+        .append("rect")
+        .attr("x", d => x(d.country))
+        .attr("y", d => y(d.recoveryRate))
+        .attr("width", x.bandwidth())
+        .attr("height", d => innerHeight - y(d.recoveryRate))
+        .attr("fill", "#2ca02c")
+        .on("mouseover", function(event, d) {
+          d3.select(this).attr("opacity", 0.8);
+          tooltip.style.opacity = 1;
+          tooltip.innerHTML = `
+            <strong>${d.country}</strong><br>
+            Recovery Rate: ${d.recoveryRate.toFixed(2)}%<br>
+            Cases: ${d3.format(",")(d.cases)}<br>
+            Recovered: ${d3.format(",")(d.recovered)}
+          `;
+        })
+        .on("mousemove", function(event) {
+          tooltip.style.left = `${event.pageX + 10}px`;
+          tooltip.style.top = `${event.pageY + 10}px`;
+        })
+        .on("mouseout", function() {
+          d3.select(this).attr("opacity", 1);
+          tooltip.style.opacity = 0;
+        });
+
+      svg.append("text")
+        .attr("x", width / 2)
+        .attr("y", margin.top / 2)
+        .attr("text-anchor", "middle")
+        .style("font-size", "16px")
+        .style("font-weight", "bold")
+        .text(`Top ${topN} Countries by Recovery Rate in ${year}`);
+    }
+
+    function updateRecoveryChart() {
+      drawRecoveryChart(
+        +topNInput.value,
+        yearSelect.value,
+        +minCasesInput.value,
+        sortOrderSelect.value
+      );
+    }
+
+    topNInput.addEventListener("input", updateRecoveryChart);
+    yearSelect.addEventListener("change", updateRecoveryChart);
+    minCasesInput.addEventListener("input", updateRecoveryChart);
+    sortOrderSelect.addEventListener("change", updateRecoveryChart);
+
+    loadData();
+  </script>
+</body>
+</html>
