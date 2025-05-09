@@ -95,9 +95,9 @@
 
     async function loadData() {
       const [confirmed, deaths, recovered, worldGeo, popData] = await Promise.all([
-        d3.csv("data/confirmed.csv"),
-        d3.csv("data/death.csv"),
-        d3.csv("data/recovery.csv"),
+        d3.csv("data/confirmed_GD.csv"),
+        d3.csv("data/death_GD.csv"),
+        d3.csv("data/recovery_GD.csv"),
         d3.json("data/world.json"),
         d3.json("data/population.json")
       ]);

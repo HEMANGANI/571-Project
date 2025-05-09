@@ -51,9 +51,7 @@
       </select>
 
       <label for="country">Country:</label>
-      <select id="country">
-        <option value="All">All Countries</option>
-      </select>
+      <select id="country"></select>
     </div>
 
     <div style="position: relative;">
@@ -91,9 +89,9 @@
 
     async function loadData() {
       const [confirmed, deaths, recovered] = await Promise.all([
-        d3.csv("data/confirmed.csv"),
-        d3.csv("data/death.csv"),
-        d3.csv("data/recovery.csv")
+        d3.csv("data/confirmed_GD.csv"),
+        d3.csv("data/death_GD.csv"),
+        d3.csv("data/recovery_GD.csv")
       ]);
 
       const dateColumns = confirmed.columns.slice(4);
@@ -115,8 +113,11 @@
             let total = 0;
             for (const date of dateColumns) {
               const parsedDate = parseDate(date);
+              const rawValue = row[date];
+              const value = rawValue && !isNaN(rawValue) ? +rawValue : 0;
+
               if (parsedDate >= start && parsedDate <= end) {
-                total += +row[date];
+                total += value;
               }
             }
             countryMap.get(country)[i] += total;
@@ -125,11 +126,24 @@
         metricsData[key] = countryMap;
       }
 
-      [...countries].sort().forEach(c => {
-        const opt = document.createElement("option");
-        opt.value = c;
-        opt.textContent = c;
-        countrySelect.appendChild(opt);
+      // Populate country dropdown with Algeria first
+      const sortedCountries = Array.from(countries).sort();
+      countrySelect.innerHTML = "";
+
+      // Ensure Algeria is added first and selected
+      const algeriaOption = document.createElement("option");
+      algeriaOption.value = "Algeria";
+      algeriaOption.textContent = "Algeria";
+      algeriaOption.selected = true;
+      countrySelect.appendChild(algeriaOption);
+
+      sortedCountries.forEach(c => {
+        if (c !== "Algeria") {
+          const opt = document.createElement("option");
+          opt.value = c;
+          opt.textContent = c;
+          countrySelect.appendChild(opt);
+        }
       });
 
       drawChart(metricsData);
@@ -145,15 +159,7 @@
       const selectedCountry = countrySelect.value;
       const dataMap = metricsData[selectedMetric];
 
-      let data;
-      if (selectedCountry === "All") {
-        data = new Array(periods.length).fill(0);
-        for (const arr of dataMap.values()) {
-          arr.forEach((val, i) => data[i] += val);
-        }
-      } else {
-        data = dataMap.get(selectedCountry) || new Array(periods.length).fill(0);
-      }
+      let data = dataMap.get(selectedCountry) || new Array(periods.length).fill(0);
 
       const x = d3.scaleBand()
         .domain(periodLabels)
@@ -161,8 +167,7 @@
         .padding(0.2);
 
       const y = d3.scaleLinear()
-        .domain([0, d3.max(data)])
-        .nice()
+        .domain([0, d3.max(data)]).nice()
         .range([innerHeight, 0]);
 
       const color = d3.scaleOrdinal()
@@ -177,12 +182,7 @@
         .attr("transform", "rotate(-40)");
 
       g.append("g")
-        .call(d3.axisLeft(y).ticks(10).tickFormat(d => {
-          if (d >= 1_000_000_000) return `${d / 1_000_000_000} billion`;
-          if (d >= 1_000_000) return `${d / 1_000_000} million`;
-          if (d >= 1_000) return `${d / 1_000} thousand`;
-          return d;
-        }))
+        .call(d3.axisLeft(y).ticks(10).tickFormat(d3.format(",")))
         .append("text")
         .attr("x", -innerHeight / 2)
         .attr("y", -60)
@@ -202,7 +202,7 @@
         .attr("fill", d => color(d.label))
         .on("mouseover", (event, d) => {
           tooltip.style.opacity = 1;
-          tooltip.innerHTML = `<strong>${d.label}</strong><br>${selectedMetric}: ${d3.format(",")(Math.round(d.value))}`;
+          tooltip.innerHTML = `<strong>${d.label}</strong><br>${metricSelect.options[metricSelect.selectedIndex].text}: ${d3.format(",")(Math.round(d.value))}`;
         })
         .on("mousemove", event => {
           tooltip.style.left = `${event.pageX + 10}px`;
@@ -218,7 +218,7 @@
         .attr("text-anchor", "middle")
         .style("font-size", "18px")
         .style("font-weight", "bold")
-        .text(`COVID-19 ${metricSelect.options[metricSelect.selectedIndex].text} Over Time`);
+        .text(`COVID-19 ${metricSelect.options[metricSelect.selectedIndex].text} in ${selectedCountry}`);
     }
 
     loadData();
