@@ -101,9 +101,9 @@
     async function loadData() {
       try {
         const [confirmed, deaths, recovered] = await Promise.all([
-          d3.csv('data/confirmed_GD.csv'),
-          d3.csv('data/death_GD.csv'),
-          d3.csv('data/recovery_GD.csv')
+          d3.csv("data/confirmed.csv"),
+          d3.csv("data/death.csv"),
+          d3.csv("data/recovery.csv")
         ]);
 
         const allYears = [...new Set(
