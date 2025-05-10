@@ -87,13 +87,22 @@
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
 
-    function processData(rawData, year) {
-      const yearColumns = Object.keys(rawData[0]).filter(col => col.match(/^\d{1,2}\/\d{1,2}\/\d{2}$/));
-      const columnsForYear = yearColumns.filter(dateStr => new Date(dateStr).getFullYear() === +year);
+    function capitalize(str) {
+      return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+    function processYearlyDelta(rawData, year) {
+      const allDates = Object.keys(rawData[0]).slice(4); // Skip lat/long
+      const datesForYear = allDates.filter(d => new Date(d).getFullYear() === +year);
+
+      if (datesForYear.length === 0) return new Map();
+
+      const earliest = datesForYear[0];
+      const latest = datesForYear[datesForYear.length - 1];
 
       return d3.rollup(
         rawData,
-        v => d3.sum(v, row => d3.sum(columnsForYear, key => +row[key])),
+        v => d3.sum(v, row => +row[latest] - +row[earliest]),
         d => d['Country/Region']
       );
     }
@@ -113,9 +122,9 @@
         )].sort();
 
         allYears.forEach(year => {
-          const confirmedTotals = processData(confirmed, year);
-          const deathsTotals = processData(deaths, year);
-          const recoveredTotals = processData(recovered, year);
+          const confirmedTotals = processYearlyDelta(confirmed, year);
+          const deathsTotals = processYearlyDelta(deaths, year);
+          const recoveredTotals = processYearlyDelta(recovered, year);
 
           dataByYear[year] = Array.from(confirmedTotals.entries()).map(([country, cases]) => ({
             country,
@@ -206,7 +215,7 @@
         .on("mouseover", function(event, d) {
           d3.select(this).attr("opacity", 0.8);
           tooltip.style.opacity = 1;
-          tooltip.innerHTML = `<div><strong>${d.country}</strong></div><div>${d.key}: ${d3.format(",")(d.value)}</div>`;
+          tooltip.innerHTML = `<div><strong>${d.country}</strong></div><div>${capitalize(d.key)} (new in ${year}): ${d3.format(",")(d.value)}</div>`;
         })
         .on("mousemove", function(event) {
           tooltip.style.left = `${event.pageX + 10}px`;
@@ -233,7 +242,7 @@
           .attr("x", 24)
           .attr("y", 9)
           .attr("dy", ".35em")
-          .text(metric.charAt(0).toUpperCase() + metric.slice(1));
+          .text(capitalize(metric));
       });
 
       svg.append("text")
@@ -242,7 +251,9 @@
         .attr("text-anchor", "middle")
         .style("font-size", "16px")
         .style("font-weight", "bold")
-        .text(`Top ${topN} Countries by COVID-19 Cases in ${year}`);
+        .text(`Top ${topN} Countries by New COVID-19 Cases, Deaths & Recoveries in ${year}`);
+
+      
     }
 
     topNInput.addEventListener("input", () => {

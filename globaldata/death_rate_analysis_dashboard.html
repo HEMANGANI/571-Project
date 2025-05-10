@@ -30,9 +30,9 @@
 </head>
 <body>
 
-  <h2>COVID-19 Recovery Rate Dashboard</h2>
+  <h2>COVID-19 Death Rate Dashboard</h2>
   <p style="font-weight: bold;">
-    Recovery Rate = (Recovered in Year / Confirmed in Year) × 100
+    Death Rate = (Deaths in Year / Confirmed in Year) × 100
   </p>
 
   <div class="controls">
@@ -45,14 +45,10 @@
       <select id="yearSelect"></select>
     </label>
     <label>
-      Min cases threshold:
-      <input type="number" id="minCases" value="10000" min="0" />
-    </label>
-    <label>
       Sort order:
       <select id="sortOrder">
         <option value="desc">Descending</option>
-        <option value="asc" selected>Ascending</option>
+        <option value="asc">Ascending</option>
       </select>
     </label>
   </div>
@@ -68,7 +64,6 @@
     const tooltip = document.getElementById("tooltip");
     const topNInput = document.getElementById("topN");
     const yearSelect = document.getElementById("yearSelect");
-    const minCasesInput = document.getElementById("minCases");
     const sortOrderSelect = document.getElementById("sortOrder");
 
     const margin = { top: 50, right: 50, bottom: 100, left: 80 };
@@ -107,10 +102,9 @@
 
     async function loadData() {
       try {
-        const [confirmed, deaths, recovered] = await Promise.all([
+        const [confirmed, deaths] = await Promise.all([
           d3.csv("data/confirmed.csv"),
-          d3.csv("data/death.csv"),
-          d3.csv("data/recovery.csv")
+          d3.csv("data/death.csv")
         ]);
 
         const dateCols = getDateColumns(confirmed);
@@ -119,37 +113,35 @@
         years.forEach(year => {
           const confirmedYearly = computeYearlyTotals(confirmed, dateCols, year);
           const deathsYearly = computeYearlyTotals(deaths, dateCols, year);
-          const recoveredYearly = computeYearlyTotals(recovered, dateCols, year);
 
           dataByYear[year] = Array.from(confirmedYearly.entries()).map(([country, cases]) => ({
             country,
             cases,
-            deaths: deathsYearly.get(country) || 0,
-            recovered: recoveredYearly.get(country) || 0
+            deaths: deathsYearly.get(country) || 0
           }));
         });
 
         yearSelect.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join("");
-        updateRecoveryChart();
+        updateDeathChart();
       } catch (error) {
         console.error("Error loading data:", error);
       }
     }
 
-    function drawRecoveryChart(topN, year, minCases, sortOrder) {
+    function drawDeathChart(topN, year, sortOrder) {
       svg.selectAll("*").remove();
 
       const countries = dataByYear[year]
-        .filter(d => d.cases >= minCases && d.recovered >= 0)
+        .filter(d => d.cases > 0)
         .map(d => ({
           country: d.country,
           cases: d.cases,
-          recovered: d.recovered,
-          recoveryRate: (d.recovered / d.cases) * 100
+          deaths: d.deaths,
+          deathRate: (d.deaths / d.cases) * 100
         }))
         .sort((a, b) => sortOrder === "asc"
-          ? a.recoveryRate - b.recoveryRate
-          : b.recoveryRate - a.recoveryRate)
+          ? a.deathRate - b.deathRate
+          : b.deathRate - a.deathRate)
         .slice(0, topN);
 
       const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
@@ -160,7 +152,7 @@
         .padding(0.2);
 
       const y = d3.scaleLinear()
-        .domain([0, 100])
+        .domain([0, d3.max(countries, d => d.deathRate)])
         .nice()
         .range([innerHeight, 0]);
 
@@ -179,18 +171,18 @@
         .enter()
         .append("rect")
         .attr("x", d => x(d.country))
-        .attr("y", d => y(d.recoveryRate))
+        .attr("y", d => y(d.deathRate))
         .attr("width", x.bandwidth())
-        .attr("height", d => innerHeight - y(d.recoveryRate))
-        .attr("fill", "#2ca02c")
+        .attr("height", d => innerHeight - y(d.deathRate))
+        .attr("fill", "#d62728")
         .on("mouseover", function(event, d) {
           d3.select(this).attr("opacity", 0.8);
           tooltip.style.opacity = 1;
           tooltip.innerHTML = `
             <strong>${d.country}</strong><br>
-            Recovery Rate: ${d.recoveryRate.toFixed(2)}%<br>
+            Death Rate: ${d.deathRate.toFixed(2)}%<br>
             Cases: ${d3.format(",")(d.cases)}<br>
-            Recovered: ${d3.format(",")(d.recovered)}
+            Deaths: ${d3.format(",")(d.deaths)}
           `;
         })
         .on("mousemove", function(event) {
@@ -208,22 +200,20 @@
         .attr("text-anchor", "middle")
         .style("font-size", "16px")
         .style("font-weight", "bold")
-        .text(`Top ${topN} Countries by Recovery Rate in ${year}`);
+        .text(`Top ${topN} Countries by Death Rate in ${year}`);
     }
 
-    function updateRecoveryChart() {
-      drawRecoveryChart(
+    function updateDeathChart() {
+      drawDeathChart(
         +topNInput.value,
         yearSelect.value,
-        +minCasesInput.value,
         sortOrderSelect.value
       );
     }
 
-    topNInput.addEventListener("input", updateRecoveryChart);
-    yearSelect.addEventListener("change", updateRecoveryChart);
-    minCasesInput.addEventListener("input", updateRecoveryChart);
-    sortOrderSelect.addEventListener("change", updateRecoveryChart);
+    topNInput.addEventListener("input", updateDeathChart);
+    yearSelect.addEventListener("change", updateDeathChart);
+    sortOrderSelect.addEventListener("change", updateDeathChart);
 
     loadData();
   </script>
