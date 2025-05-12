@@ -430,20 +430,18 @@
       endDate: "12/08/2020"   
     };
 
-    
-
     function calculateRecoveryTimeIndices() {
-  // Only need to find the end date
-  state.recoveryEndIndex = Math.floor(state.dates.length * 0.25); // Default fallback
-  
-  // Find the closest match for Nov 2020 end date
-  for (let i = 0; i < state.dates.length; i++) {
-    if (state.dates[i].includes("11/04/2020".substring(0, 6))) {
-      state.recoveryEndIndex = i;
-      break;
+      // Only need to find the end date
+      state.recoveryEndIndex = Math.floor(state.dates.length * 0.25); // Default fallback
+      
+      // Find the closest match for Nov 2020 end date
+      for (let i = 0; i < state.dates.length; i++) {
+        if (state.dates[i].includes("11/04/2020".substring(0, 6))) {
+          state.recoveryEndIndex = i;
+          break;
+        }
+      }
     }
-  }
-}
     
     // DOM Elements
     const elements = {
@@ -786,82 +784,81 @@
       brushGroup.call(brush.move, [0, timelineWidth - timelineMargin.left - timelineMargin.right]);
       
       // Function to handle brush events
-      // Complete brushed() function for timeline with max end date restriction for recovery data
-function brushed(event) {
-  // Skip if already updating to prevent infinite loops
-  if (state.isUpdatingTimeline) return;
-  
-  // Ignore brush-by-zoom events
-  if (event.sourceEvent && event.sourceEvent.type === 'zoom') return;
-  
-  // Process brush selection
-  if (event.selection) {
-    // Special handling for recovery data with restriction toggle on
-    if (state.restrictRecoveryTime) {
-      // Set flag to prevent recursion
-      state.isUpdatingTimeline = true;
-      
-      try {
-        // Get the new selected range from brush event
-        const [x0, x1] = event.selection;
-        const newStartIndex = Math.round(timelineScale.invert(x0));
-        let newEndIndex = Math.round(timelineScale.invert(x1));
+      function brushed(event) {
+        // Skip if already updating to prevent infinite loops
+        if (state.isUpdatingTimeline) return;
         
-        // Only restrict end date if it exceeds the maximum recovery date
-        if (newEndIndex > state.recoveryEndIndex) {
-          // Keep user's selected start date, only restrict end date
-          state.startDateIndex = newStartIndex;
-          state.endDateIndex = state.recoveryEndIndex;
+        // Ignore brush-by-zoom events
+        if (event.sourceEvent && event.sourceEvent.type === 'zoom') return;
+        
+        // Process brush selection
+        if (event.selection) {
+          // Special handling for recovery data with restriction toggle on
+          if (state.restrictRecoveryTime) {
+            // Set flag to prevent recursion
+            state.isUpdatingTimeline = true;
+            
+            try {
+              // Get the new selected range from brush event
+              const [x0, x1] = event.selection;
+              const newStartIndex = Math.round(timelineScale.invert(x0));
+              let newEndIndex = Math.round(timelineScale.invert(x1));
+              
+              // Only restrict end date if it exceeds the maximum recovery date
+              if (newEndIndex > state.recoveryEndIndex) {
+                // Keep user's selected start date, only restrict end date
+                state.startDateIndex = newStartIndex;
+                state.endDateIndex = state.recoveryEndIndex;
+                
+                // Calculate pixel positions for brush (keeping start, limiting end)
+                const startPixel = x0; // Keep user's current start position
+                const endPixel = (state.recoveryEndIndex / (state.dates.length - 1)) * 
+                                (timelineWidth - timelineMargin.left - timelineMargin.right);
+                
+                // Move brush to respect the maximum end date
+                brushGroup.call(brush.move, [startPixel, endPixel]);
+              } else {
+                // Both dates are within allowed range, use them as is
+                state.startDateIndex = newStartIndex;
+                state.endDateIndex = newEndIndex;
+              }
+              
+              // Ensure indices are within bounds of available dates
+              state.startDateIndex = Math.max(0, Math.min(state.startDateIndex, state.dates.length - 1));
+              state.endDateIndex = Math.max(0, Math.min(state.endDateIndex, state.dates.length - 1));
+              
+              // Update the date display to show current range
+              uiUtils.updateDateDisplay();
+              
+              // Update all visualizations with the new date range
+              updateAllVisualizations();
+            } finally {
+              // Always reset the flag to allow future brush events
+              state.isUpdatingTimeline = false;
+            }
+            
+            return; // Exit early after handling recovery mode
+          }
           
-          // Calculate pixel positions for brush (keeping start, limiting end)
-          const startPixel = x0; // Keep user's current start position
-          const endPixel = (state.recoveryEndIndex / (state.dates.length - 1)) * 
-                          (timelineWidth - timelineMargin.left - timelineMargin.right);
+          // Standard brush handling for all other metrics
+          // Convert pixel positions to date indices
+          const [x0, x1] = event.selection;
+          state.startDateIndex = Math.round(timelineScale.invert(x0));
+          state.endDateIndex = Math.round(timelineScale.invert(x1));
           
-          // Move brush to respect the maximum end date
-          brushGroup.call(brush.move, [startPixel, endPixel]);
-        } else {
-          // Both dates are within allowed range, use them as is
-          state.startDateIndex = newStartIndex;
-          state.endDateIndex = newEndIndex;
+          // Ensure indices are within bounds
+          state.startDateIndex = Math.max(0, Math.min(state.startDateIndex, state.dates.length - 1));
+          state.endDateIndex = Math.max(0, Math.min(state.endDateIndex, state.dates.length - 1));
+          
+          // Update date display
+          uiUtils.updateDateDisplay();
+          
+          // Update visualizations
+          updateAllVisualizations();
         }
-        
-        // Ensure indices are within bounds of available dates
-        state.startDateIndex = Math.max(0, Math.min(state.startDateIndex, state.dates.length - 1));
-        state.endDateIndex = Math.max(0, Math.min(state.endDateIndex, state.dates.length - 1));
-        
-        // Update the date display to show current range
-        uiUtils.updateDateDisplay();
-        
-        // Update all visualizations with the new date range
-        updateAllVisualizations();
-      } finally {
-        // Always reset the flag to allow future brush events
-        state.isUpdatingTimeline = false;
       }
-      
-      return; // Exit early after handling recovery mode
     }
-    
-    // Standard brush handling for all other metrics
-    // Convert pixel positions to date indices
-    const [x0, x1] = event.selection;
-    state.startDateIndex = Math.round(timelineScale.invert(x0));
-    state.endDateIndex = Math.round(timelineScale.invert(x1));
-    
-    // Ensure indices are within bounds
-    state.startDateIndex = Math.max(0, Math.min(state.startDateIndex, state.dates.length - 1));
-    state.endDateIndex = Math.max(0, Math.min(state.endDateIndex, state.dates.length - 1));
-    
-    // Update date display
-    uiUtils.updateDateDisplay();
-    
-    // Update visualizations
-    updateAllVisualizations();
-  }
-}
-    }
-    
+        
     // Animation controls
     function setupAnimationControls() {
       elements.playPauseButton.addEventListener('click', function() {
@@ -907,7 +904,7 @@ function brushed(event) {
         uiUtils.updateDateDisplay();
         
         // Update brush position
-        const timelineWidth = elements.timeline.node().clientWidth - 40; // Adjust for margins
+        const timelineWidth = elements.timeline.node().clientWidth - 40;
         const pixelPos = (state.endDateIndex / (state.dates.length - 1)) * timelineWidth;
         
         elements.timeline.select('.brush')
@@ -1128,7 +1125,7 @@ function brushed(event) {
       uiUtils.updateDateDisplay();
       
       // Reset timeline brush to select all
-      const timelineWidth = elements.timeline.node().clientWidth - 40; // Adjust for margins
+      const timelineWidth = elements.timeline.node().clientWidth - 40;
       elements.timeline.select('.brush')
         .call(d3.brushX().move, [0, timelineWidth]);
       
@@ -1169,1005 +1166,984 @@ function brushed(event) {
     function restrictTimelineForRecovery() {
 
       // Prevent recursion
-  if (state.isUpdatingTimeline) return;
-  
-  // Set flag while updating
-  state.isUpdatingTimeline = true;
-  try {
-      // Update state with recovery date range
-      state.startDateIndex = state.recoveryStartIndex;
-      state.endDateIndex = state.recoveryEndIndex;
+      if (state.isUpdatingTimeline) return;
       
-      // Update date display
-      uiUtils.updateDateDisplay();
-      
-      // Update brush position on timeline
-      const timelineWidth = elements.timeline.node().clientWidth - 40;
-      const timelineMargin = { left: 20, right: 20 }; // Adjust based on your actual margins
-      
-      const startPixel = (state.recoveryStartIndex / (state.dates.length - 1)) * 
-                        (timelineWidth - timelineMargin.left - timelineMargin.right);
-      const endPixel = (state.recoveryEndIndex / (state.dates.length - 1)) * 
-                      (timelineWidth - timelineMargin.left - timelineMargin.right);
-      
-      if (elements.timeline.select('.brush').node()) {
-        elements.timeline.select('.brush')
-          .call(d3.brushX().move, [startPixel, endPixel]);
-      }
-      updateAllVisualizations();
-    }finally {
-    // Always reset the flag
-    state.isUpdatingTimeline = false;
-  }
-
-    }  
-// Initialize the map visualization
-function initializeMap() {
-  const svg = elements.mapViz;
-  const width = svg.node().clientWidth;
-  const height = svg.node().clientHeight;
-  
-  // Define projection
-  const projection = d3.geoNaturalEarth1()
-    .scale(width / 5.5)
-    .translate([width / 2, height / 1.8]);
-  
-  // Create path generator
-  const path = d3.geoPath().projection(projection);
-  
-  // Clear any existing content
-  svg.selectAll("*").remove();
-  
-  // Create main group
-  const g = svg.append("g");
-  
-  // Add zoom capability
-  const zoom = d3.zoom()
-    .scaleExtent([1, 8])
-    .on("zoom", (event) => {
-      g.attr("transform", event.transform);
-    });
-  
-  svg.call(zoom);
-  
-  // Create a group for map features
-  const mapGroup = g.append("g").attr("class", "map-features");
-  
-  // Draw countries
-  mapGroup.selectAll("path")
-    .data(state.worldGeoData.features)
-    .enter()
-    .append("path")
-    .attr("class", "country")
-    .attr("d", path)
-    .attr("fill", "#ccc")
-    .attr("stroke", "#999")
-    .attr("stroke-width", 0.5)
-    .on("mouseover", function(event, d) {
-      d3.select(this).attr("stroke-width", 1.5).attr("stroke", "#000");
-      
-      const country = d.properties.name;
-      const countryData = getCountryDataForMap(country);
-      
-      if (countryData) {
-        let tooltipContent = `<strong>${country}</strong><br>`;
-        
-        if (state.metric === 'confirmed') {
-          tooltipContent += `Confirmed: ${formatUtils.formatNumber(countryData)}`;
-          if (state.isNormalized) {
-            tooltipContent += ` per 100k`;
-          }
-        } else if (state.metric === 'deaths') {
-          tooltipContent += `Deaths: ${formatUtils.formatNumber(countryData)}`;
-          if (state.isNormalized) {
-            tooltipContent += ` per 100k`;
-          }
-        } else if (state.metric === 'recovered') {
-          tooltipContent += `Recovered: ${formatUtils.formatNumber(countryData)}`;
-          if (state.isNormalized) {
-            tooltipContent += ` per 100k`;
-          }
-        }
-        
-        uiUtils.showTooltip(tooltipContent, event);
-      } else {
-        uiUtils.showTooltip(`<strong>${country}</strong><br>No data available`, event);
-      }
-    })
-    .on("mousemove", function(event) {
-      elements.tooltip
-        .style("left", `${event.pageX + 10}px`)
-        .style("top", `${event.pageY + 10}px`);
-    })
-    .on("mouseout", function() {
-      // Only reduce stroke width if not selected
-      if (!this.classList.contains('selected')) {
-        d3.select(this).attr("stroke-width", 0.5).attr("stroke", "#999");
-      }
-      uiUtils.hideTooltip();
-    })
-    .on("click", function(event, d) {
-      const country = d.properties.name;
-      
-      // Toggle selection of this country
-      if (state.selectedCountries.has(country)) {
-        state.selectedCountries.delete(country);
-        d3.select(this).classed("selected", false)
-          .attr("stroke-width", 0.5)
-          .attr("stroke", "#999");
-      } else {
-        state.selectedCountries.add(country);
-        d3.select(this).classed("selected", true)
-          .attr("stroke-width", 2)
-          .attr("stroke", "#000");
-      }
-      
-      // Update country display and other visualizations
-      uiUtils.updateCountryDisplay();
-      updateBarChart();
-      updateStackedBarChart();
-      updateLineChart();
-      updatePieChart();
-    });
-  
-  // Add legend
-  createMapLegend(svg, width, height);
-}
-
-// Create a color legend for the map
-function createMapLegend(svg, width, height) {
-  const legendWidth = 300;
-  const legendHeight = 10;
-  const legendX = width - legendWidth - 20;
-  const legendY = height - 40;
-  
-  // Create a group for the legend
-  const legendGroup = svg.append("g")
-    .attr("class", "legend")
-    .attr("transform", `translate(${legendX}, ${legendY})`);
-  
-  // Create linear gradient for the legend
-  const defs = svg.append("defs");
-  
-  const linearGradient = defs.append("linearGradient")
-    .attr("id", "map-color-gradient")
-    .attr("x1", "0%")
-    .attr("y1", "0%")
-    .attr("x2", "100%")
-    .attr("y2", "0%");
-    
-  // Add the legend rectangle
-  legendGroup.append("rect")
-    .attr("width", legendWidth)
-    .attr("height", legendHeight)
-    .style("fill", "url(#map-color-gradient)");
-  
-  // Add a title to the legend
-  legendGroup.append("text")
-    .attr("class", "legend-title")
-    .attr("x", 0)
-    .attr("y", -5)
-    .style("font-size", "12px")
-    .text("Metric Scale");
-  
-  // Create tick marks and labels (will be updated in updateMap)
-  legendGroup.append("g")
-    .attr("class", "legend-axis")
-    .attr("transform", `translate(0, ${legendHeight})`);
-}
-
-// Update the map visualization
-function updateMap() {
-  if (!state.dataLoaded) return;
-  
-  const svg = elements.mapViz;
-  const currentDate = state.dates[state.endDateIndex];
-  
-  // Get data for the current metric and date
-  const rawData = state.metric === 'confirmed' 
-    ? state.confirmedData 
-    : state.metric === 'deaths' 
-      ? state.deathsData 
-      : state.recoveredData;
-  
-  const countryData = dataUtils.getAggregatedDataForDate(
-    rawData, 
-    currentDate, 
-    state.isNormalized
-  );
-  
-  // Get min and max values for color scale
-  const values = Object.values(countryData).filter(v => v > 0);
-  let maxValue = d3.max(values) || 1;
-  let minValue = d3.min(values) || 0;
-  
-  // Adjust max value to show better contrast
-  maxValue = d3.quantile(values.sort(d3.ascending), 0.95) || maxValue;
-  
-  // Create color scale
-  const colorScale = d3.scaleSequential()
-    .domain([0, maxValue])
-    .interpolator(
-      state.metric === 'deaths' 
-        ? d3.interpolateReds 
-        : state.metric === 'recovered' 
-          ? d3.interpolateGreens 
-          : d3.interpolateBlues
-    );
-  
-  // Update map colors
-  svg.selectAll(".country")
-    .transition()
-    .duration(500)
-    .attr("fill", d => {
-      const country = d.properties.name;
-      const value = countryData[country];
-      return value ? colorScale(Math.min(value, maxValue)) : "#ccc";
-    });
-  
-  // Update country selections
-  svg.selectAll(".country")
-    .classed("selected", d => state.selectedCountries.has(d.properties.name))
-    .attr("stroke-width", d => state.selectedCountries.has(d.properties.name) ? 2 : 0.5)
-    .attr("stroke", d => state.selectedCountries.has(d.properties.name) ? "#000" : "#999");
-  
-  // Update the gradient
-  const linearGradient = d3.select("#map-color-gradient");
-  linearGradient.selectAll("*").remove();
-  
-  for (let i = 0; i <= 100; i += 10) {
-    linearGradient.append("stop")
-      .attr("offset", `${i}%`)
-      .attr("stop-color", colorScale(maxValue * i / 100));
-  }
-  
-  // Update legend axis
-  const legendScale = d3.scaleLinear()
-    .domain([0, maxValue])
-    .range([0, 300]);
-  
-  const tickFormat = state.isNormalized
-    ? (d) => d.toFixed(0)
-    : d3.format(".1s");
-  
-  const legendAxis = d3.axisBottom(legendScale)
-    .ticks(5)
-    .tickFormat(tickFormat);
-  
-  svg.select(".legend-axis")
-    .transition()
-    .duration(500)
-    .call(legendAxis);
-  
-  // Update legend title
-  let title = state.metric === 'confirmed' 
-    ? "Confirmed Cases" 
-    : state.metric === 'deaths' 
-      ? "Deaths" 
-      : "Recovered";
-      
-  if (state.isNormalized) {
-    title += " per 100k population";
-  }
-  
-  svg.select(".legend-title").text(title);
-}
-
-// Helper function to get country data for the map tooltip
-function getCountryDataForMap(country) {
-  if (!state.dataLoaded) return null;
-  
-  const currentDate = state.dates[state.endDateIndex];
-  const rawData = state.metric === 'confirmed' 
-    ? state.confirmedData 
-    : state.metric === 'deaths' 
-      ? state.deathsData 
-      : state.recoveredData;
-  
-  const countryData = dataUtils.getAggregatedDataForDate(
-    rawData, 
-    currentDate, 
-    state.isNormalized
-  );
-  
-  return countryData[country];
-}
-
-// Initialize the bar chart visualization
-function initializeBarChart() {
-  const svg = elements.barViz;
-  const width = svg.node().clientWidth;
-  const height = svg.node().clientHeight;
-  
-  // Define margins
-  const margin = { top: 10, right: 20, bottom: 100, left: 70 };
-  const innerWidth = width - margin.left - margin.right;
-  const innerHeight = height - margin.top - margin.bottom;
-  
-  // Clear any existing content
-  svg.selectAll("*").remove();
-  
-  // Create main group with margins
-  const g = svg.append("g")
-    .attr("transform", `translate(${margin.left},${margin.top})`);
-  
-  // Create axes groups
-  g.append("g")
-    .attr("class", "x-axis")
-    .attr("transform", `translate(0,${innerHeight})`);
-  
-  g.append("g")
-    .attr("class", "y-axis");
-  
-  // Add axis labels
-  g.append("text")
-    .attr("class", "x-axis-label")
-    .attr("x", innerWidth / 2)
-    .attr("y", innerHeight + margin.bottom - 10)
-    .attr("text-anchor", "middle")
-    .style("font-size", "12px")
-    .text("Countries");
-  
-  g.append("text")
-    .attr("class", "y-axis-label")
-    .attr("transform", "rotate(-90)")
-    .attr("x", -innerHeight / 2)
-    .attr("y", -margin.left + 20)
-    .attr("text-anchor", "middle")
-    .style("font-size", "12px")
-    .text("Total Cases");
-  
-  // Add chart title
-  g.append("text")
-    .attr("class", "chart-title")
-    .attr("x", innerWidth / 2)
-    .attr("y", -margin.top / 2)
-    .attr("text-anchor", "middle")
-    .style("font-size", "14px")
-    .style("font-weight", "bold");
-}
-
-// Update the bar chart visualization
-function updateBarChart() {
-  if (!state.dataLoaded) return;
-  
-  const svg = elements.barViz;
-  const width = svg.node().clientWidth;
-  const height = svg.node().clientHeight;
-  
-  // Define margins
-  const margin = { top: 10, right: 20, bottom: 100, left: 70 };
-  const innerWidth = width - margin.left - margin.right;
-  const innerHeight = height - margin.top - margin.bottom;
-  
-  // Get the start and end dates
-  const startDate = state.dates[state.startDateIndex];
-  const endDate = state.dates[state.endDateIndex];
-  
-  // Get data based on current metric and date range
-  const rawData = state.metric === 'confirmed' 
-    ? state.confirmedData 
-    : state.metric === 'deaths' 
-      ? state.deathsData 
-      : state.recoveredData;
-  
-  let countryData = dataUtils.getDataForDateRange(
-    rawData, 
-    startDate, 
-    endDate, 
-    state.isNormalized
-  );
-  
-  // Convert to array and sort
-  let data = Object.entries(countryData)
-    .map(([country, value]) => ({ country, value }))
-    .filter(d => d.value > 0);
-  
-  // Apply country filter if selected
-  if (state.selectedCountries.size > 0) {
-    data = data.filter(d => state.selectedCountries.has(d.country));
-  }
-  
-  // Sort by value in descending order
-  data.sort((a, b) => b.value - a.value);
-  
-  // Limit to top N countries
-  data = data.slice(0, state.topN);
-  
-  // Define scales
-  const xScale = d3.scaleBand()
-    .domain(data.map(d => d.country))
-    .range([0, innerWidth])
-    .padding(0.2);
-  
-  const yScale = d3.scaleLinear()
-    .domain([0, d3.max(data, d => d.value) * 1.1]) // Add 10% padding at the top
-    .range([innerHeight, 0])
-    .nice();
-  
-  // Update axes
-  const xAxis = d3.axisBottom(xScale);
-  const yAxis = d3.axisLeft(yScale)
-    .ticks(10)
-    .tickFormat(state.isNormalized 
-      ? d => d.toFixed(0)
-      : d3.format(".2~s"));
-  
-  svg.select(".x-axis")
-    .transition()
-    .duration(500)
-    .call(xAxis)
-    .selectAll("text")
-    .style("text-anchor", "end")
-    .attr("dx", "-.8em")
-    .attr("dy", ".15em")
-    .attr("transform", "rotate(-45)");
-  
-  svg.select(".y-axis")
-    .transition()
-    .duration(500)
-    .call(yAxis);
-  
-  // Update axis labels
-  const yLabelText = state.metric === 'confirmed' 
-    ? state.isNormalized ? "Cases per 100k population" : "Total Cases" 
-    : state.metric === 'deaths' 
-      ? state.isNormalized ? "Deaths per 100k population" : "Total Deaths" 
-      : state.isNormalized ? "Recovered per 100k population" : "Total Recovered";
-  
-  svg.select(".y-axis-label").text(yLabelText);
-  
-  // Update chart title
-  const dateRangeText = `(${formatUtils.formatDate(startDate)} to ${formatUtils.formatDate(endDate)})`;
-  
-  // Data binding for bars
-  const bars = svg.select("g").selectAll(".bar")
-    .data(data, d => d.country);
-  
-  // Exit
-  bars.exit()
-    .transition()
-    .duration(500)
-    .attr("y", innerHeight)
-    .attr("height", 0)
-    .remove();
-  
-  // Enter
-  const barsEnter = bars.enter()
-    .append("rect")
-    .attr("class", "bar")
-    .attr("x", d => xScale(d.country))
-    .attr("width", xScale.bandwidth())
-    .attr("y", innerHeight)
-    .attr("height", 0)
-    .attr("fill", getMetricColor(state.metric, 0.8));
-  
-  // Add event handlers
-  barsEnter
-    .on("mouseover", function(event, d) {
-      d3.select(this).attr("opacity", 0.6);
-      
-      let tooltipContent = `<strong>${d.country}</strong><br>`;
-      
-      if (state.metric === 'confirmed') {
-        tooltipContent += `Confirmed: ${formatUtils.formatNumber(d.value)}`;
-      } else if (state.metric === 'deaths') {
-        tooltipContent += `Deaths: ${formatUtils.formatNumber(d.value)}`;
-      } else {
-        tooltipContent += `Recovered: ${formatUtils.formatNumber(d.value)}`;
-      }
-      
-      if (state.isNormalized) {
-        tooltipContent += " per 100k population";
-      }
-      
-      uiUtils.showTooltip(tooltipContent, event);
-    })
-    .on("mousemove", function(event) {
-      elements.tooltip
-        .style("left", `${event.pageX + 10}px`)
-        .style("top", `${event.pageY + 10}px`);
-    })
-    .on("mouseout", function() {
-      d3.select(this).attr("opacity", 1);
-      uiUtils.hideTooltip();
-    })
-    .on("click", function(event, d) {
-      // Toggle country selection
-      if (state.selectedCountries.has(d.country)) {
-        state.selectedCountries.delete(d.country);
-      } else {
-        state.selectedCountries.add(d.country);
-      }
-      
-      // Update country display and other visualizations
-      uiUtils.updateCountryDisplay();
-      updateMap();
-      updateStackedBarChart();
-      updateLineChart();
-      updatePieChart();
-      
-      // Update this bar's appearance
-      d3.select(this).attr("stroke", state.selectedCountries.has(d.country) ? "#000" : "none")
-        .attr("stroke-width", state.selectedCountries.has(d.country) ? 2 : 0);
-    });
-  
-  // Enter + Update
-  barsEnter.merge(bars)
-    .transition()
-    .duration(500)
-    .attr("x", d => xScale(d.country))
-    .attr("width", xScale.bandwidth())
-    .attr("y", d => yScale(d.value))
-    .attr("height", d => innerHeight - yScale(d.value))
-    .attr("fill", getMetricColor(state.metric, 0.8))
-    .attr("stroke", d => state.selectedCountries.has(d.country) ? "#000" : "none")
-    .attr("stroke-width", d => state.selectedCountries.has(d.country) ? 2 : 0);
-}
-
-// Initialize the stacked bar chart for death and recovery rates
-function initializeStackedBarChart() {
-  const svg = elements.stackedViz;
-  const width = svg.node().clientWidth;
-  const height = svg.node().clientHeight;
-  
-  // Define margins
-  const margin = { top: 10, right: 20, bottom: 100, left: 50 };
-  const innerWidth = width - margin.left - margin.right;
-  const innerHeight = height - margin.top - margin.bottom;
-  
-  // Clear any existing content
-  svg.selectAll("*").remove();
-  
-  // Create main group with margins
-  const g = svg.append("g")
-    .attr("transform", `translate(${margin.left},${margin.top})`);
-  
-  // Create axes groups
-  g.append("g")
-    .attr("class", "x-axis")
-    .attr("transform", `translate(0,${innerHeight})`);
-  
-  g.append("g")
-    .attr("class", "y-axis");
-  
-  // Add axis labels
-  g.append("text")
-    .attr("class", "x-axis-label")
-    .attr("x", innerWidth / 2)
-    .attr("y", innerHeight + margin.bottom - 10)
-    .attr("text-anchor", "middle")
-    .style("font-size", "12px")
-    .text("Countries");
-  
-  g.append("text")
-    .attr("class", "y-axis-label")
-    .attr("transform", "rotate(-90)")
-    .attr("x", -innerHeight / 2)
-    .attr("y", -margin.left + 10)
-    .attr("text-anchor", "middle")
-    .style("font-size", "12px")
-    .text("Percentage (%)");
-  
-  // Add chart title
-  g.append("text")
-    .attr("class", "chart-title")
-    .attr("x", innerWidth / 2)
-    .attr("y", -margin.top / 2)
-    .attr("text-anchor", "middle")
-    .style("font-size", "14px")
-    .style("font-weight", "bold");
-  
-  // Add legend
-  const legend = svg.append("g")
-    .attr("class", "stacked-legend")
-    .attr("transform", `translate(${width - margin.right - 150}, ${margin.top + 305})`);
-  
-  // Death rate legend item
-  legend.append("rect")
-    .attr("width", 15)
-    .attr("height", 15)
-    .attr("fill", "#d62728");
-  
-  legend.append("text")
-    .attr("x", 20)
-    .attr("y", 12.5)
-    .style("font-size", "12px")
-    .text("Death Rate");
-  
-  // Recovery rate legend item
-  legend.append("rect")
-    .attr("width", 15)
-    .attr("height", 15)
-    .attr("y", 20)
-    .attr("fill", "#2ca02c");
-  
-  legend.append("text")
-    .attr("x", 20)
-    .attr("y", 32.5)
-    .style("font-size", "12px")
-    .text("Recovery Rate");
-}
-
-// Update the stacked bar chart visualization
-function updateStackedBarChart() {
-  if (!state.dataLoaded) return;
-  
-  const svg = elements.stackedViz;
-  const width = svg.node().clientWidth;
-  const height = svg.node().clientHeight;
-  
-  // Define margins
-  const margin = { top: 10, right: 20, bottom: 100, left: 50 };
-  const innerWidth = width - margin.left - margin.right;
-  const innerHeight = height - margin.top - margin.bottom;
-  
-  // Get the current date
-  const currentDate = state.dates[state.endDateIndex];
-  
-  // Calculate death and recovery rates
-  const rates = dataUtils.calculateRates(
-    state.confirmedData,
-    state.deathsData,
-    state.recoveredData,
-    currentDate,
-    state.isNormalized
-  );
-  
-  // Convert to array and filter
-  let data = Object.entries(rates)
-    .map(([country, data]) => ({
-      country,
-      deathRate: data.deathRate,
-      recoveryRate: data.recoveryRate,
-      confirmed: data.confirmed,
-      deaths: data.deaths,
-      recovered: data.recovered
-    }))
-    .filter(d => d.deathRate >= 0 && d.recoveryRate > 0 && d.deathRate <= 100 && d.recoveryRate <= 100);
-  
-  // Apply country filter if selected
-  if (state.selectedCountries.size > 0) {
-    data = data.filter(d => state.selectedCountries.has(d.country));
-  }
-  
-  // Sort based on the current sort order
-  switch (state.sortOrder) {
-    case 'recovery-desc':
-      data.sort((a, b) => b.recoveryRate - a.recoveryRate);
-      break;
-  }
-  
-  // Limit to top N countries
-  data = data.slice(0, state.topN);
-  
-  // Define scales
-  const xScale = d3.scaleBand()
-    .domain(data.map(d => d.country))
-    .range([0, innerWidth])
-    .padding(0.2);
-  
-  const yScale = d3.scaleLinear()
-    .domain([0, 100])
-    .range([innerHeight, 0]);
-  
-  // Update axes
-  const xAxis = d3.axisBottom(xScale);
-  const yAxis = d3.axisLeft(yScale)
-    .ticks(10)
-    .tickFormat(d => d + "%");
-  
-  svg.select(".x-axis")
-    .transition()
-    .duration(500)
-    .call(xAxis)
-    .selectAll("text")
-    .style("text-anchor", "end")
-    .attr("dx", "-.8em")
-    .attr("dy", ".15em")
-    .attr("transform", "rotate(-45)");
-  
-  svg.select(".y-axis")
-    .transition()
-    .duration(500)
-    .call(yAxis);
-  
-  // Create groups for each country
-  const countryGroups = svg.select("g").selectAll(".country-group")
-    .data(data, d => d.country);
-  
-  // Exit
-  countryGroups.exit().remove();
-  
-  // Enter
-  const countryGroupsEnter = countryGroups.enter()
-    .append("g")
-    .attr("class", "country-group")
-    .attr("transform", d => `translate(${xScale(d.country)}, 0)`);
-  
-  // Enter death rate bars
-  countryGroupsEnter.append("rect")
-    .attr("class", "death-rate-bar")
-    .attr("y", innerHeight)
-    .attr("width", xScale.bandwidth())
-    .attr("height", 0)
-    .attr("fill", "#d62728")
-    .attr("opacity", 0.8)
-    .on("mouseover", function(event, d) {
-      d3.select(this).attr("opacity", 1);
-      
-      const tooltipContent = `
-        <strong>${d.country}</strong><br>
-        Death Rate: ${formatUtils.formatPercent(d.deathRate)}<br>
-        Deaths: ${formatUtils.formatNumber(d.deaths)}<br>
-        Cases: ${formatUtils.formatNumber(d.confirmed)}
-      `;
-      
-      uiUtils.showTooltip(tooltipContent, event);
-    })
-    .on("mousemove", function(event) {
-      elements.tooltip
-        .style("left", `${event.pageX + 10}px`)
-        .style("top", `${event.pageY + 10}px`);
-    })
-    .on("mouseout", function() {
-      d3.select(this).attr("opacity", 0.8);
-      uiUtils.hideTooltip();
-    })
-    .on("click", function(event, d) {
-      // Toggle country selection
-      if (state.selectedCountries.has(d.country)) {
-        state.selectedCountries.delete(d.country);
-      } else {
-        state.selectedCountries.add(d.country);
-      }
-      
-      // Update country display and other visualizations
-      uiUtils.updateCountryDisplay();
-      updateMap();
-      updateBarChart();
-      updateLineChart();
-      updatePieChart();
-      
-      // Update the stroke
-      svg.selectAll(".country-group")
-        .each(function(data) {
-          const group = d3.select(this);
-          const isSelected = state.selectedCountries.has(data.country);
+      // Set flag while updating
+      state.isUpdatingTimeline = true;
+      try {
+          // Update state with recovery date range
+          state.startDateIndex = state.recoveryStartIndex;
+          state.endDateIndex = state.recoveryEndIndex;
           
-          group.selectAll("rect")
-            .attr("stroke", isSelected ? "#000" : "none")
-            .attr("stroke-width", isSelected ? 1 : 0);
-        });
-    });
-  
-  // Enter recovery rate bars
-  countryGroupsEnter.append("rect")
-    .attr("class", "recovery-rate-bar")
-    .attr("y", innerHeight)
-    .attr("width", xScale.bandwidth())
-    .attr("height", 0)
-    .attr("fill", "#2ca02c")
-    .attr("opacity", 0.8)
-    .on("mouseover", function(event, d) {
-      d3.select(this).attr("opacity", 1);
-      
-      const tooltipContent = `
-        <strong>${d.country}</strong><br>
-        Recovery Rate: ${formatUtils.formatPercent(d.recoveryRate)}<br>
-        Recovered: ${formatUtils.formatNumber(d.recovered)}<br>
-        Cases: ${formatUtils.formatNumber(d.confirmed)}
-      `;
-      
-      uiUtils.showTooltip(tooltipContent, event);
-    })
-    .on("mousemove", function(event) {
-      elements.tooltip
-        .style("left", `${event.pageX + 10}px`)
-        .style("top", `${event.pageY + 10}px`);
-    })
-    .on("mouseout", function() {
-      d3.select(this).attr("opacity", 0.8);
-      uiUtils.hideTooltip();
-    })
-    .on("click", function(event, d) {
-      // Toggle country selection
-      if (state.selectedCountries.has(d.country)) {
-        state.selectedCountries.delete(d.country);
-      } else {
-        state.selectedCountries.add(d.country);
-      }
-      
-      // Update country display and other visualizations
-      uiUtils.updateCountryDisplay();
-      updateMap();
-      updateBarChart();
-      updateLineChart();
-      updatePieChart();
-      
-      // Update the stroke
-      svg.selectAll(".country-group")
-        .each(function(data) {
-          const group = d3.select(this);
-          const isSelected = state.selectedCountries.has(data.country);
+          // Update date display
+          uiUtils.updateDateDisplay();
           
-          group.selectAll("rect")
-            .attr("stroke", isSelected ? "#000" : "none")
-            .attr("stroke-width", isSelected ? 1 : 0);
-        });
-    });
-  
-  // Update + Enter for country groups
-  countryGroupsEnter.merge(countryGroups)
-    .transition()
-    .duration(500)
-    .attr("transform", d => `translate(${xScale(d.country)}, 0)`);
-  
-  // Update + Enter for death rate bars
-  svg.selectAll(".death-rate-bar")
-    .data(data, d => d.country)
-    .transition()
-    .duration(500)
-    .attr("y", d => yScale(d.deathRate))
-    .attr("height", d => innerHeight - yScale(d.deathRate))
-    .attr("width", xScale.bandwidth())
-    .attr("stroke", d => state.selectedCountries.has(d.country) ? "#000" : "none")
-    .attr("stroke-width", d => state.selectedCountries.has(d.country) ? 1 : 0);
-  
-  // Update + Enter for recovery rate bars
-  svg.selectAll(".recovery-rate-bar")
-    .data(data, d => d.country)
-    .transition()
-    .duration(500)
-    .attr("y", d => yScale(d.deathRate + d.recoveryRate))
-    .attr("height", d => yScale(d.deathRate) - yScale(d.deathRate + d.recoveryRate))
-    .attr("width", xScale.bandwidth())
-    .attr("stroke", d => state.selectedCountries.has(d.country) ? "#000" : "none")
-    .attr("stroke-width", d => state.selectedCountries.has(d.country) ? 1 : 0);
-}
+          // Update brush position on timeline
+          const timelineWidth = elements.timeline.node().clientWidth - 40;
+          const timelineMargin = { left: 20, right: 20 };
+          
+          const startPixel = (state.recoveryStartIndex / (state.dates.length - 1)) * 
+                            (timelineWidth - timelineMargin.left - timelineMargin.right);
+          const endPixel = (state.recoveryEndIndex / (state.dates.length - 1)) * 
+                          (timelineWidth - timelineMargin.left - timelineMargin.right);
+          
+          if (elements.timeline.select('.brush').node()) {
+            elements.timeline.select('.brush')
+              .call(d3.brushX().move, [startPixel, endPixel]);
+          }
+          updateAllVisualizations();
+        }finally {
+        // Always reset the flag
+        state.isUpdatingTimeline = false;
+      }
 
-// Helper function to get color based on metric
-function getMetricColor(metric, opacity = 1) {
-  if (metric === 'confirmed') {
-    return `rgba(31, 119, 180, ${opacity})`; // Blue
-  } else if (metric === 'deaths') {
-    return `rgba(214, 39, 40, ${opacity})`; // Red
-  } else {
-    return `rgba(44, 160, 44, ${opacity})`; // Green
-  }
-}
+    }
 
-// Initialize the line chart visualization
-function initializeLineChart() {
-  const svg = elements.lineViz;
-  const width = svg.node().clientWidth;
-  const height = svg.node().clientHeight;
-  
-  // Define margins
-  const margin = { top: 20, right: 20, bottom: 40, left: 70 };
-  const innerWidth = width - margin.left - margin.right;
-  const innerHeight = height - margin.top - margin.bottom;
-  
-  // Clear any existing content
-  svg.selectAll("*").remove();
-  
-  // Create main group with margins
-  const g = svg.append("g")
-    .attr("transform", `translate(${margin.left},${margin.top})`);
-  
-  // Create axes groups
-  g.append("g")
-    .attr("class", "x-axis")
-    .attr("transform", `translate(0,${innerHeight})`);
-  
-  g.append("g")
-    .attr("class", "y-axis");
-  
-  // Add axis labels
-  g.append("text")
-    .attr("class", "x-axis-label")
-    .attr("x", innerWidth / 2)
-    .attr("y", innerHeight + margin.bottom - 50)
-    .attr("text-anchor", "middle")
-    .style("font-size", "12px")
-    .text("Date");
-  
-  g.append("text")
-    .attr("class", "y-axis-label")
-    .attr("transform", "rotate(-90)")
-    .attr("x", -innerHeight / 2)
-    .attr("y", -margin.left + 20)
-    .attr("text-anchor", "middle")
-    .style("font-size", "12px")
-    .text("Total Cases");
-  
-  // Add chart title
-  g.append("text")
-    .attr("class", "chart-title")
-    .attr("x", innerWidth / 2)
-    .attr("y", -margin.top / 2)
-    .attr("text-anchor", "middle")
-    .style("font-size", "14px")
-    .style("font-weight", "bold");
-  
-  // Add a clip path to ensure lines don't exceed the chart area
-  svg.append("defs").append("clipPath")
-    .attr("id", "clip")
-    .append("rect")
-    .attr("width", innerWidth)
-    .attr("height", innerHeight);
-  
-  // Create a group for the lines with clip path
-  g.append("g")
-    .attr("class", "lines")
-    .attr("clip-path", "url(#clip)");
-}
-
-// Update the line chart visualization
-function updateLineChart() {
-  if (!state.dataLoaded) return;
-  
-  const svg = elements.lineViz;
-  const width = svg.node().clientWidth;
-  const height = svg.node().clientHeight;
-  
-  // Define margins
-  const margin = { top: 20, right: 20, bottom: 40, left: 70 };
-  const innerWidth = width - margin.left - margin.right;
-  const innerHeight = height - margin.top - margin.bottom;
-  
-  // Get the raw data based on the current metric
-  const rawData = state.metric === 'confirmed' 
-    ? state.confirmedData 
-    : state.metric === 'deaths' 
-      ? state.deathsData 
-      : state.recoveredData;
-  
-  // Get the countries to display
-  let selectedCountries = Array.from(state.selectedCountries);
-  
-  // If no countries are selected, show world total
-  if (selectedCountries.length === 0) {
-    // Add "World" as a placeholder
-    selectedCountries = ["World"];
-  }
-  
-  // Get time series data for selected countries (or world total)
-  const timeSeriesData = {};
-  
-  if (selectedCountries.length === 1 && selectedCountries[0] === "World") {
-    // Calculate world total for each date
-    timeSeriesData["World"] = state.dates.map(date => {
-      let total = 0;
-      rawData.forEach(row => {
-        total += +row[date] || 0;
-      });
+    // Initialize the map visualization
+    function initializeMap() {
+      const svg = elements.mapViz;
+      const width = svg.node().clientWidth;
+      const height = svg.node().clientHeight;
       
-      // Apply normalization if needed (using approximate world population)
-      if (state.isNormalized) {
-        total = (total / 7800000000) * 100000; // Approximate world population
+      // Define projection
+      const projection = d3.geoNaturalEarth1()
+        .scale(width / 5.5)
+        .translate([width / 2, height / 1.8]);
+      
+      // Create path generator
+      const path = d3.geoPath().projection(projection);
+      
+      // Clear any existing content
+      svg.selectAll("*").remove();
+      
+      // Create main group
+      const g = svg.append("g");
+      
+      // Add zoom capability
+      const zoom = d3.zoom()
+        .scaleExtent([1, 8])
+        .on("zoom", (event) => {
+          g.attr("transform", event.transform);
+        });
+      
+      svg.call(zoom);
+      
+      // Create a group for map features
+      const mapGroup = g.append("g").attr("class", "map-features");
+      
+      // Draw countries
+      mapGroup.selectAll("path")
+        .data(state.worldGeoData.features)
+        .enter()
+        .append("path")
+        .attr("class", "country")
+        .attr("d", path)
+        .attr("fill", "#ccc")
+        .attr("stroke", "#999")
+        .attr("stroke-width", 0.5)
+        .on("mouseover", function(event, d) {
+          d3.select(this).attr("stroke-width", 1.5).attr("stroke", "#000");
+          
+          const country = d.properties.name;
+          const countryData = getCountryDataForMap(country);
+          
+          if (countryData) {
+            let tooltipContent = `<strong>${country}</strong><br>`;
+            
+            if (state.metric === 'confirmed') {
+              tooltipContent += `Confirmed: ${formatUtils.formatNumber(countryData)}`;
+              if (state.isNormalized) {
+                tooltipContent += ` per 100k`;
+              }
+            } else if (state.metric === 'deaths') {
+              tooltipContent += `Deaths: ${formatUtils.formatNumber(countryData)}`;
+              if (state.isNormalized) {
+                tooltipContent += ` per 100k`;
+              }
+            } else if (state.metric === 'recovered') {
+              tooltipContent += `Recovered: ${formatUtils.formatNumber(countryData)}`;
+              if (state.isNormalized) {
+                tooltipContent += ` per 100k`;
+              }
+            }
+            
+            uiUtils.showTooltip(tooltipContent, event);
+          } else {
+            uiUtils.showTooltip(`<strong>${country}</strong><br>No data available`, event);
+          }
+        })
+        .on("mousemove", function(event) {
+          elements.tooltip
+            .style("left", `${event.pageX + 10}px`)
+            .style("top", `${event.pageY + 10}px`);
+        })
+        .on("mouseout", function() {
+          // Only reduce stroke width if not selected
+          if (!this.classList.contains('selected')) {
+            d3.select(this).attr("stroke-width", 0.5).attr("stroke", "#999");
+          }
+          uiUtils.hideTooltip();
+        })
+        .on("click", function(event, d) {
+          const country = d.properties.name;
+          
+          // Toggle selection of this country
+          if (state.selectedCountries.has(country)) {
+            state.selectedCountries.delete(country);
+            d3.select(this).classed("selected", false)
+              .attr("stroke-width", 0.5)
+              .attr("stroke", "#999");
+          } else {
+            state.selectedCountries.add(country);
+            d3.select(this).classed("selected", true)
+              .attr("stroke-width", 2)
+              .attr("stroke", "#000");
+          }
+          
+          // Update country display and other visualizations
+          uiUtils.updateCountryDisplay();
+          updateBarChart();
+          updateStackedBarChart();
+          updateLineChart();
+          updatePieChart();
+        });
+      
+      // Add legend
+      createMapLegend(svg, width, height);
+    }
+
+    // Create a color legend for the map
+    function createMapLegend(svg, width, height) {
+      const legendWidth = 300;
+      const legendHeight = 10;
+      const legendX = width - legendWidth - 20;
+      const legendY = height - 40;
+      
+      // Create a group for the legend
+      const legendGroup = svg.append("g")
+        .attr("class", "legend")
+        .attr("transform", `translate(${legendX}, ${legendY})`);
+      
+      // Create linear gradient for the legend
+      const defs = svg.append("defs");
+      
+      const linearGradient = defs.append("linearGradient")
+        .attr("id", "map-color-gradient")
+        .attr("x1", "0%")
+        .attr("y1", "0%")
+        .attr("x2", "100%")
+        .attr("y2", "0%");
+        
+      // Add the legend rectangle
+      legendGroup.append("rect")
+        .attr("width", legendWidth)
+        .attr("height", legendHeight)
+        .style("fill", "url(#map-color-gradient)");
+      
+      // Add a title to the legend
+      legendGroup.append("text")
+        .attr("class", "legend-title")
+        .attr("x", 0)
+        .attr("y", -5)
+        .style("font-size", "12px")
+        .text("Metric Scale");
+      
+      // Create tick marks and labels (will be updated in updateMap)
+      legendGroup.append("g")
+        .attr("class", "legend-axis")
+        .attr("transform", `translate(0, ${legendHeight})`);
+    }
+
+    // Update the map visualization
+    function updateMap() {
+      if (!state.dataLoaded) return;
+      
+      const svg = elements.mapViz;
+      const currentDate = state.dates[state.endDateIndex];
+      
+      // Get data for the current metric and date
+      const rawData = state.metric === 'confirmed' 
+        ? state.confirmedData 
+        : state.metric === 'deaths' 
+          ? state.deathsData 
+          : state.recoveredData;
+      
+      const countryData = dataUtils.getAggregatedDataForDate(
+        rawData, 
+        currentDate, 
+        state.isNormalized
+      );
+      
+      // Get min and max values for color scale
+      const values = Object.values(countryData).filter(v => v > 0);
+      let maxValue = d3.max(values) || 1;
+      let minValue = d3.min(values) || 0;
+      
+
+      maxValue = d3.quantile(values.sort(d3.ascending), 0.95) || maxValue;
+      
+      // Create color scale
+      const colorScale = d3.scaleSequential()
+        .domain([0, maxValue])
+        .interpolator(
+          state.metric === 'deaths' 
+            ? d3.interpolateReds 
+            : state.metric === 'recovered' 
+              ? d3.interpolateGreens 
+              : d3.interpolateBlues
+        );
+      
+      // Update map colors
+      svg.selectAll(".country")
+        .transition()
+        .duration(500)
+        .attr("fill", d => {
+          const country = d.properties.name;
+          const value = countryData[country];
+          return value ? colorScale(Math.min(value, maxValue)) : "#ccc";
+        });
+      
+      // Update country selections
+      svg.selectAll(".country")
+        .classed("selected", d => state.selectedCountries.has(d.properties.name))
+        .attr("stroke-width", d => state.selectedCountries.has(d.properties.name) ? 2 : 0.5)
+        .attr("stroke", d => state.selectedCountries.has(d.properties.name) ? "#000" : "#999");
+      
+      // Update the gradient
+      const linearGradient = d3.select("#map-color-gradient");
+      linearGradient.selectAll("*").remove();
+      
+      for (let i = 0; i <= 100; i += 10) {
+        linearGradient.append("stop")
+          .attr("offset", `${i}%`)
+          .attr("stop-color", colorScale(maxValue * i / 100));
       }
       
-      return {
-        date: date,
-        value: total
-      };
-    });
-  } else {
-    // Get data for each selected country
-    selectedCountries.forEach(country => {
-      const countryRows = rawData.filter(row => row['Country/Region'] === country);
+      // Update legend axis
+      const legendScale = d3.scaleLinear()
+        .domain([0, maxValue])
+        .range([0, 300]);
       
-      if (countryRows.length > 0) {
-        timeSeriesData[country] = state.dates.map(date => {
+      const tickFormat = state.isNormalized
+        ? (d) => d.toFixed(0)
+        : d3.format(".1s");
+      
+      const legendAxis = d3.axisBottom(legendScale)
+        .ticks(5)
+        .tickFormat(tickFormat);
+      
+      svg.select(".legend-axis")
+        .transition()
+        .duration(500)
+        .call(legendAxis);
+      
+      // Update legend title
+      let title = state.metric === 'confirmed' 
+        ? "Confirmed Cases" 
+        : state.metric === 'deaths' 
+          ? "Deaths" 
+          : "Recovered";
+          
+      if (state.isNormalized) {
+        title += " per 100k population";
+      }
+      
+      svg.select(".legend-title").text(title);
+    }
+
+    // Helper function to get country data for the map tooltip
+    function getCountryDataForMap(country) {
+      if (!state.dataLoaded) return null;
+      
+      const currentDate = state.dates[state.endDateIndex];
+      const rawData = state.metric === 'confirmed' 
+        ? state.confirmedData 
+        : state.metric === 'deaths' 
+          ? state.deathsData 
+          : state.recoveredData;
+      
+      const countryData = dataUtils.getAggregatedDataForDate(
+        rawData, 
+        currentDate, 
+        state.isNormalized
+      );
+      
+      return countryData[country];
+    }
+
+    // Initialize the bar chart visualization
+    function initializeBarChart() {
+      const svg = elements.barViz;
+      const width = svg.node().clientWidth;
+      const height = svg.node().clientHeight;
+      
+      // Define margins
+      const margin = { top: 10, right: 20, bottom: 100, left: 70 };
+      const innerWidth = width - margin.left - margin.right;
+      const innerHeight = height - margin.top - margin.bottom;
+      
+      // Clear any existing content
+      svg.selectAll("*").remove();
+      
+      // Create main group with margins
+      const g = svg.append("g")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
+      
+      // Create axes groups
+      g.append("g")
+        .attr("class", "x-axis")
+        .attr("transform", `translate(0,${innerHeight})`);
+      
+      g.append("g")
+        .attr("class", "y-axis");
+      
+      // Add axis labels
+      g.append("text")
+        .attr("class", "x-axis-label")
+        .attr("x", innerWidth / 2)
+        .attr("y", innerHeight + margin.bottom - 10)
+        .attr("text-anchor", "middle")
+        .style("font-size", "12px")
+        .text("Countries");
+      
+      g.append("text")
+        .attr("class", "y-axis-label")
+        .attr("transform", "rotate(-90)")
+        .attr("x", -innerHeight / 2)
+        .attr("y", -margin.left + 20)
+        .attr("text-anchor", "middle")
+        .style("font-size", "12px")
+        .text("Total Cases");
+      
+      // Add chart title
+      g.append("text")
+        .attr("class", "chart-title")
+        .attr("x", innerWidth / 2)
+        .attr("y", -margin.top / 2)
+        .attr("text-anchor", "middle")
+        .style("font-size", "14px")
+        .style("font-weight", "bold");
+    }
+
+    // Update the bar chart visualization
+    function updateBarChart() {
+      if (!state.dataLoaded) return;
+      
+      const svg = elements.barViz;
+      const width = svg.node().clientWidth;
+      const height = svg.node().clientHeight;
+      
+      // Define margins
+      const margin = { top: 10, right: 20, bottom: 100, left: 70 };
+      const innerWidth = width - margin.left - margin.right;
+      const innerHeight = height - margin.top - margin.bottom;
+      
+      // Get the start and end dates
+      const startDate = state.dates[state.startDateIndex];
+      const endDate = state.dates[state.endDateIndex];
+      
+      // Get data based on current metric and date range
+      const rawData = state.metric === 'confirmed' 
+        ? state.confirmedData 
+        : state.metric === 'deaths' 
+          ? state.deathsData 
+          : state.recoveredData;
+      
+      let countryData = dataUtils.getDataForDateRange(
+        rawData, 
+        startDate, 
+        endDate, 
+        state.isNormalized
+      );
+      
+      // Convert to array and sort
+      let data = Object.entries(countryData)
+        .map(([country, value]) => ({ country, value }))
+        .filter(d => d.value > 0);
+      
+      // Apply country filter if selected
+      if (state.selectedCountries.size > 0) {
+        data = data.filter(d => state.selectedCountries.has(d.country));
+      }
+      
+      // Sort by value in descending order
+      data.sort((a, b) => b.value - a.value);
+      
+      // Limit to top N countries
+      data = data.slice(0, state.topN);
+      
+      // Define scales
+      const xScale = d3.scaleBand()
+        .domain(data.map(d => d.country))
+        .range([0, innerWidth])
+        .padding(0.2);
+      
+      const yScale = d3.scaleLinear()
+        .domain([0, d3.max(data, d => d.value) * 1.1]) // Add 10% padding at the top
+        .range([innerHeight, 0])
+        .nice();
+      
+      // Update axes
+      const xAxis = d3.axisBottom(xScale);
+      const yAxis = d3.axisLeft(yScale)
+        .ticks(10)
+        .tickFormat(state.isNormalized 
+          ? d => d.toFixed(0)
+          : d3.format(".2~s"));
+      
+      svg.select(".x-axis")
+        .transition()
+        .duration(500)
+        .call(xAxis)
+        .selectAll("text")
+        .style("text-anchor", "end")
+        .attr("dx", "-.8em")
+        .attr("dy", ".15em")
+        .attr("transform", "rotate(-45)");
+      
+      svg.select(".y-axis")
+        .transition()
+        .duration(500)
+        .call(yAxis);
+      
+      // Update axis labels
+      const yLabelText = state.metric === 'confirmed' 
+        ? state.isNormalized ? "Cases per 100k population" : "Total Cases" 
+        : state.metric === 'deaths' 
+          ? state.isNormalized ? "Deaths per 100k population" : "Total Deaths" 
+          : state.isNormalized ? "Recovered per 100k population" : "Total Recovered";
+      
+      svg.select(".y-axis-label").text(yLabelText);
+      
+      // Update chart title
+      const dateRangeText = `(${formatUtils.formatDate(startDate)} to ${formatUtils.formatDate(endDate)})`;
+      
+      // Data binding for bars
+      const bars = svg.select("g").selectAll(".bar")
+        .data(data, d => d.country);
+      
+      // Exit
+      bars.exit()
+        .transition()
+        .duration(500)
+        .attr("y", innerHeight)
+        .attr("height", 0)
+        .remove();
+      
+      // Enter
+      const barsEnter = bars.enter()
+        .append("rect")
+        .attr("class", "bar")
+        .attr("x", d => xScale(d.country))
+        .attr("width", xScale.bandwidth())
+        .attr("y", innerHeight)
+        .attr("height", 0)
+        .attr("fill", getMetricColor(state.metric, 0.8));
+      
+      // Add event handlers
+      barsEnter
+        .on("mouseover", function(event, d) {
+          d3.select(this).attr("opacity", 0.6);
+          
+          let tooltipContent = `<strong>${d.country}</strong><br>`;
+          
+          if (state.metric === 'confirmed') {
+            tooltipContent += `Confirmed: ${formatUtils.formatNumber(d.value)}`;
+          } else if (state.metric === 'deaths') {
+            tooltipContent += `Deaths: ${formatUtils.formatNumber(d.value)}`;
+          } else {
+            tooltipContent += `Recovered: ${formatUtils.formatNumber(d.value)}`;
+          }
+          
+          if (state.isNormalized) {
+            tooltipContent += " per 100k population";
+          }
+          
+          uiUtils.showTooltip(tooltipContent, event);
+        })
+        .on("mousemove", function(event) {
+          elements.tooltip
+            .style("left", `${event.pageX + 10}px`)
+            .style("top", `${event.pageY + 10}px`);
+        })
+        .on("mouseout", function() {
+          d3.select(this).attr("opacity", 1);
+          uiUtils.hideTooltip();
+        })
+        .on("click", function(event, d) {
+          // Toggle country selection
+          if (state.selectedCountries.has(d.country)) {
+            state.selectedCountries.delete(d.country);
+          } else {
+            state.selectedCountries.add(d.country);
+          }
+          
+          // Update country display and other visualizations
+          uiUtils.updateCountryDisplay();
+          updateMap();
+          updateStackedBarChart();
+          updateLineChart();
+          updatePieChart();
+          
+          // Update this bar's appearance
+          d3.select(this).attr("stroke", state.selectedCountries.has(d.country) ? "#000" : "none")
+            .attr("stroke-width", state.selectedCountries.has(d.country) ? 2 : 0);
+        });
+      
+      // Enter + Update
+      barsEnter.merge(bars)
+        .transition()
+        .duration(500)
+        .attr("x", d => xScale(d.country))
+        .attr("width", xScale.bandwidth())
+        .attr("y", d => yScale(d.value))
+        .attr("height", d => innerHeight - yScale(d.value))
+        .attr("fill", getMetricColor(state.metric, 0.8))
+        .attr("stroke", d => state.selectedCountries.has(d.country) ? "#000" : "none")
+        .attr("stroke-width", d => state.selectedCountries.has(d.country) ? 2 : 0);
+    }
+
+    // Initialize the stacked bar chart for death and recovery rates
+    function initializeStackedBarChart() {
+      const svg = elements.stackedViz;
+      const width = svg.node().clientWidth;
+      const height = svg.node().clientHeight;
+      
+      // Define margins
+      const margin = { top: 10, right: 20, bottom: 100, left: 50 };
+      const innerWidth = width - margin.left - margin.right;
+      const innerHeight = height - margin.top - margin.bottom;
+      
+      // Clear any existing content
+      svg.selectAll("*").remove();
+      
+      // Create main group with margins
+      const g = svg.append("g")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
+      
+      // Create axes groups
+      g.append("g")
+        .attr("class", "x-axis")
+        .attr("transform", `translate(0,${innerHeight})`);
+      
+      g.append("g")
+        .attr("class", "y-axis");
+      
+      // Add axis labels
+      g.append("text")
+        .attr("class", "x-axis-label")
+        .attr("x", innerWidth / 2)
+        .attr("y", innerHeight + margin.bottom - 10)
+        .attr("text-anchor", "middle")
+        .style("font-size", "12px")
+        .text("Countries");
+      
+      g.append("text")
+        .attr("class", "y-axis-label")
+        .attr("transform", "rotate(-90)")
+        .attr("x", -innerHeight / 2)
+        .attr("y", -margin.left + 10)
+        .attr("text-anchor", "middle")
+        .style("font-size", "12px")
+        .text("Percentage (%)");
+      
+      // Add chart title
+      g.append("text")
+        .attr("class", "chart-title")
+        .attr("x", innerWidth / 2)
+        .attr("y", -margin.top / 2)
+        .attr("text-anchor", "middle")
+        .style("font-size", "14px")
+        .style("font-weight", "bold");
+      
+      // Add legend
+      const legend = svg.append("g")
+        .attr("class", "stacked-legend")
+        .attr("transform", `translate(${width - margin.right - 150}, ${margin.top + 305})`);
+      
+      // Death rate legend item
+      legend.append("rect")
+        .attr("width", 15)
+        .attr("height", 15)
+        .attr("fill", "#d62728");
+      
+      legend.append("text")
+        .attr("x", 20)
+        .attr("y", 12.5)
+        .style("font-size", "12px")
+        .text("Death Rate");
+      
+      // Recovery rate legend item
+      legend.append("rect")
+        .attr("width", 15)
+        .attr("height", 15)
+        .attr("y", 20)
+        .attr("fill", "#2ca02c");
+      
+      legend.append("text")
+        .attr("x", 20)
+        .attr("y", 32.5)
+        .style("font-size", "12px")
+        .text("Recovery Rate");
+    }
+
+    // Update the stacked bar chart visualization
+    function updateStackedBarChart() {
+      if (!state.dataLoaded) return;
+      
+      const svg = elements.stackedViz;
+      const width = svg.node().clientWidth;
+      const height = svg.node().clientHeight;
+      
+      // Define margins
+      const margin = { top: 10, right: 20, bottom: 100, left: 50 };
+      const innerWidth = width - margin.left - margin.right;
+      const innerHeight = height - margin.top - margin.bottom;
+      
+      // Get the current date
+      const currentDate = state.dates[state.endDateIndex];
+      
+      // Calculate death and recovery rates
+      const rates = dataUtils.calculateRates(
+        state.confirmedData,
+        state.deathsData,
+        state.recoveredData,
+        currentDate,
+        state.isNormalized
+      );
+      
+      // Convert to array and filter
+      let data = Object.entries(rates)
+        .map(([country, data]) => ({
+          country,
+          deathRate: data.deathRate,
+          recoveryRate: data.recoveryRate,
+          confirmed: data.confirmed,
+          deaths: data.deaths,
+          recovered: data.recovered
+        }))
+        .filter(d => d.deathRate >= 0 && d.recoveryRate > 0 && d.deathRate <= 100 && d.recoveryRate <= 100);
+      
+      // Apply country filter if selected
+      if (state.selectedCountries.size > 0) {
+        data = data.filter(d => state.selectedCountries.has(d.country));
+      }
+      
+      // Sort based on the current sort order
+      switch (state.sortOrder) {
+        case 'recovery-desc':
+          data.sort((a, b) => b.recoveryRate - a.recoveryRate);
+          break;
+      }
+      
+      // Limit to top N countries
+      data = data.slice(0, state.topN);
+      
+      // Define scales
+      const xScale = d3.scaleBand()
+        .domain(data.map(d => d.country))
+        .range([0, innerWidth])
+        .padding(0.2);
+      
+      const yScale = d3.scaleLinear()
+        .domain([0, 100])
+        .range([innerHeight, 0]);
+      
+      // Update axes
+      const xAxis = d3.axisBottom(xScale);
+      const yAxis = d3.axisLeft(yScale)
+        .ticks(10)
+        .tickFormat(d => d + "%");
+      
+      svg.select(".x-axis")
+        .transition()
+        .duration(500)
+        .call(xAxis)
+        .selectAll("text")
+        .style("text-anchor", "end")
+        .attr("dx", "-.8em")
+        .attr("dy", ".15em")
+        .attr("transform", "rotate(-45)");
+      
+      svg.select(".y-axis")
+        .transition()
+        .duration(500)
+        .call(yAxis);
+      
+      // Create groups for each country
+      const countryGroups = svg.select("g").selectAll(".country-group")
+        .data(data, d => d.country);
+      
+      // Exit
+      countryGroups.exit().remove();
+      
+      // Enter
+      const countryGroupsEnter = countryGroups.enter()
+        .append("g")
+        .attr("class", "country-group")
+        .attr("transform", d => `translate(${xScale(d.country)}, 0)`);
+      
+      // Enter death rate bars
+      countryGroupsEnter.append("rect")
+        .attr("class", "death-rate-bar")
+        .attr("y", innerHeight)
+        .attr("width", xScale.bandwidth())
+        .attr("height", 0)
+        .attr("fill", "#d62728")
+        .attr("opacity", 0.8)
+        .on("mouseover", function(event, d) {
+          d3.select(this).attr("opacity", 1);
+          
+          const tooltipContent = `
+            <strong>${d.country}</strong><br>
+            Death Rate: ${formatUtils.formatPercent(d.deathRate)}<br>
+            Deaths: ${formatUtils.formatNumber(d.deaths)}<br>
+            Cases: ${formatUtils.formatNumber(d.confirmed)}
+          `;
+          
+          uiUtils.showTooltip(tooltipContent, event);
+        })
+        .on("mousemove", function(event) {
+          elements.tooltip
+            .style("left", `${event.pageX + 10}px`)
+            .style("top", `${event.pageY + 10}px`);
+        })
+        .on("mouseout", function() {
+          d3.select(this).attr("opacity", 0.8);
+          uiUtils.hideTooltip();
+        })
+        .on("click", function(event, d) {
+          // Toggle country selection
+          if (state.selectedCountries.has(d.country)) {
+            state.selectedCountries.delete(d.country);
+          } else {
+            state.selectedCountries.add(d.country);
+          }
+          
+          // Update country display and other visualizations
+          uiUtils.updateCountryDisplay();
+          updateMap();
+          updateBarChart();
+          updateLineChart();
+          updatePieChart();
+          
+          // Update the stroke
+          svg.selectAll(".country-group")
+            .each(function(data) {
+              const group = d3.select(this);
+              const isSelected = state.selectedCountries.has(data.country);
+              
+              group.selectAll("rect")
+                .attr("stroke", isSelected ? "#000" : "none")
+                .attr("stroke-width", isSelected ? 1 : 0);
+            });
+        });
+      
+      // Enter recovery rate bars
+      countryGroupsEnter.append("rect")
+        .attr("class", "recovery-rate-bar")
+        .attr("y", innerHeight)
+        .attr("width", xScale.bandwidth())
+        .attr("height", 0)
+        .attr("fill", "#2ca02c")
+        .attr("opacity", 0.8)
+        .on("mouseover", function(event, d) {
+          d3.select(this).attr("opacity", 1);
+          
+          const tooltipContent = `
+            <strong>${d.country}</strong><br>
+            Recovery Rate: ${formatUtils.formatPercent(d.recoveryRate)}<br>
+            Recovered: ${formatUtils.formatNumber(d.recovered)}<br>
+            Cases: ${formatUtils.formatNumber(d.confirmed)}
+          `;
+          
+          uiUtils.showTooltip(tooltipContent, event);
+        })
+        .on("mousemove", function(event) {
+          elements.tooltip
+            .style("left", `${event.pageX + 10}px`)
+            .style("top", `${event.pageY + 10}px`);
+        })
+        .on("mouseout", function() {
+          d3.select(this).attr("opacity", 0.8);
+          uiUtils.hideTooltip();
+        })
+        .on("click", function(event, d) {
+          // Toggle country selection
+          if (state.selectedCountries.has(d.country)) {
+            state.selectedCountries.delete(d.country);
+          } else {
+            state.selectedCountries.add(d.country);
+          }
+          
+          // Update country display and other visualizations
+          uiUtils.updateCountryDisplay();
+          updateMap();
+          updateBarChart();
+          updateLineChart();
+          updatePieChart();
+          
+          // Update the stroke
+          svg.selectAll(".country-group")
+            .each(function(data) {
+              const group = d3.select(this);
+              const isSelected = state.selectedCountries.has(data.country);
+              
+              group.selectAll("rect")
+                .attr("stroke", isSelected ? "#000" : "none")
+                .attr("stroke-width", isSelected ? 1 : 0);
+            });
+        });
+      
+      // Update + Enter for country groups
+      countryGroupsEnter.merge(countryGroups)
+        .transition()
+        .duration(500)
+        .attr("transform", d => `translate(${xScale(d.country)}, 0)`);
+      
+      // Update + Enter for death rate bars
+      svg.selectAll(".death-rate-bar")
+        .data(data, d => d.country)
+        .transition()
+        .duration(500)
+        .attr("y", d => yScale(d.deathRate))
+        .attr("height", d => innerHeight - yScale(d.deathRate))
+        .attr("width", xScale.bandwidth())
+        .attr("stroke", d => state.selectedCountries.has(d.country) ? "#000" : "none")
+        .attr("stroke-width", d => state.selectedCountries.has(d.country) ? 1 : 0);
+      
+      // Update + Enter for recovery rate bars
+      svg.selectAll(".recovery-rate-bar")
+        .data(data, d => d.country)
+        .transition()
+        .duration(500)
+        .attr("y", d => yScale(d.deathRate + d.recoveryRate))
+        .attr("height", d => yScale(d.deathRate) - yScale(d.deathRate + d.recoveryRate))
+        .attr("width", xScale.bandwidth())
+        .attr("stroke", d => state.selectedCountries.has(d.country) ? "#000" : "none")
+        .attr("stroke-width", d => state.selectedCountries.has(d.country) ? 1 : 0);
+    }
+
+    // Helper function to get color based on metric
+    function getMetricColor(metric, opacity = 1) {
+      if (metric === 'confirmed') {
+        return `rgba(31, 119, 180, ${opacity})`; // Blue
+      } else if (metric === 'deaths') {
+        return `rgba(214, 39, 40, ${opacity})`; // Red
+      } else {
+        return `rgba(44, 160, 44, ${opacity})`; // Green
+      }
+    }
+
+    // Initialize the line chart visualization
+    function initializeLineChart() {
+      const svg = elements.lineViz;
+      const width = svg.node().clientWidth;
+      const height = svg.node().clientHeight;
+      
+      // Define margins
+      const margin = { top: 20, right: 20, bottom: 40, left: 70 };
+      const innerWidth = width - margin.left - margin.right;
+      const innerHeight = height - margin.top - margin.bottom;
+      
+      // Clear any existing content
+      svg.selectAll("*").remove();
+      
+      // Create main group with margins
+      const g = svg.append("g")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
+      
+      // Create axes groups
+      g.append("g")
+        .attr("class", "x-axis")
+        .attr("transform", `translate(0,${innerHeight})`);
+      
+      g.append("g")
+        .attr("class", "y-axis");
+      
+      // Add axis labels
+      g.append("text")
+        .attr("class", "x-axis-label")
+        .attr("x", innerWidth / 2)
+        .attr("y", innerHeight + margin.bottom - 50)
+        .attr("text-anchor", "middle")
+        .style("font-size", "12px")
+        .text("Date");
+      
+      g.append("text")
+        .attr("class", "y-axis-label")
+        .attr("transform", "rotate(-90)")
+        .attr("x", -innerHeight / 2)
+        .attr("y", -margin.left + 20)
+        .attr("text-anchor", "middle")
+        .style("font-size", "12px")
+        .text("Total Cases");
+      
+      // Add chart title
+      g.append("text")
+        .attr("class", "chart-title")
+        .attr("x", innerWidth / 2)
+        .attr("y", -margin.top / 2)
+        .attr("text-anchor", "middle")
+        .style("font-size", "14px")
+        .style("font-weight", "bold");
+      
+      // Add a clip path to ensure lines don't exceed the chart area
+      svg.append("defs").append("clipPath")
+        .attr("id", "clip")
+        .append("rect")
+        .attr("width", innerWidth)
+        .attr("height", innerHeight);
+      
+      // Create a group for the lines with clip path
+      g.append("g")
+        .attr("class", "lines")
+        .attr("clip-path", "url(#clip)");
+    }
+
+    // Update the line chart visualization
+    function updateLineChart() {
+      if (!state.dataLoaded) return;
+      
+      const svg = elements.lineViz;
+      const width = svg.node().clientWidth;
+      const height = svg.node().clientHeight;
+      
+      // Define margins
+      const margin = { top: 20, right: 20, bottom: 40, left: 70 };
+      const innerWidth = width - margin.left - margin.right;
+      const innerHeight = height - margin.top - margin.bottom;
+      
+      // Get the raw data based on the current metric
+      const rawData = state.metric === 'confirmed' 
+        ? state.confirmedData 
+        : state.metric === 'deaths' 
+          ? state.deathsData 
+          : state.recoveredData;
+      
+      // Get the countries to display
+      let selectedCountries = Array.from(state.selectedCountries);
+      
+      // If no countries are selected, show world total
+      if (selectedCountries.length === 0) {
+        // Add "World" as a placeholder
+        selectedCountries = ["World"];
+      }
+      
+      // Get time series data for selected countries (or world total)
+      const timeSeriesData = {};
+      
+      if (selectedCountries.length === 1 && selectedCountries[0] === "World") {
+        // Calculate world total for each date
+        timeSeriesData["World"] = state.dates.map(date => {
           let total = 0;
-          countryRows.forEach(row => {
+          rawData.forEach(row => {
             total += +row[date] || 0;
           });
           
-          // Apply normalization if needed
-          if (state.isNormalized && state.populationData[country] > 0) {
-            total = (total / state.populationData[country]) * 100000;
+          // Apply normalization if needed (using approximate world population)
+          if (state.isNormalized) {
+            total = (total / 7800000000) * 100000; // Approximate world population
           }
           
           return {
@@ -2175,422 +2151,444 @@ function updateLineChart() {
             value: total
           };
         });
+      } else {
+        // Get data for each selected country
+        selectedCountries.forEach(country => {
+          const countryRows = rawData.filter(row => row['Country/Region'] === country);
+          
+          if (countryRows.length > 0) {
+            timeSeriesData[country] = state.dates.map(date => {
+              let total = 0;
+              countryRows.forEach(row => {
+                total += +row[date] || 0;
+              });
+              
+              // Apply normalization if needed
+              if (state.isNormalized && state.populationData[country] > 0) {
+                total = (total / state.populationData[country]) * 100000;
+              }
+              
+              return {
+                date: date,
+                value: total
+              };
+            });
+          }
+        });
       }
-    });
-  }
-  
-  // Parse dates for the x-axis
-  const parseDate = d3.timeParse("%m/%d/%y");
-  
-  // Process data for all countries/world
-  const processedData = {};
-  let allValues = [];
-  
-  Object.entries(timeSeriesData).forEach(([country, data]) => {
-    processedData[country] = data.map(d => {
-      const value = d.value;
-      allValues.push(value);
-      return {
-        date: parseDate(d.date),
-        value: value
-      };
-    });
-  });
-  
-  // Only include dates within the selected range
-  const startDate = parseDate(state.dates[state.startDateIndex]);
-  const endDate = parseDate(state.dates[state.endDateIndex]);
-  
-  Object.keys(processedData).forEach(country => {
-    processedData[country] = processedData[country].filter(d => 
-      d.date >= startDate && d.date <= endDate
-    );
-  });
-  
-  // Set up scales
-  const xScale = d3.scaleTime()
-    .domain([startDate, endDate])
-    .range([0, innerWidth]);
-  
-  const yScale = d3.scaleLinear()
-    .domain([0, d3.max(allValues) * 1.1]) // Add 10% padding
-    .range([innerHeight, 0])
-    .nice();
-  
-  // Create line generator
-  const line = d3.line()
-    .x(d => xScale(d.date))
-    .y(d => yScale(d.value))
-    .curve(d3.curveMonotoneX); // Smoother curve
-  
-  // Update axes
-  const xAxis = d3.axisBottom(xScale)
-    .ticks(width > 600 ? 10 : 5)
-    .tickFormat(d3.timeFormat("%b, %Y"));
-  
-  const yAxis = d3.axisLeft(yScale)
-    .ticks(10)
-    .tickFormat(state.isNormalized 
-      ? d => d.toFixed(0)
-      : d3.format(".2~s"));
-  
-  svg.select(".x-axis")
-    .transition()
-    .duration(500)
-    .call(xAxis)
-    .selectAll("text")
-    .style("text-anchor", "end")
-    .attr("dx", "-.8em")
-    .attr("dy", ".15em")
-    .attr("transform", "rotate(-35)");
-  
-  svg.select(".y-axis")
-    .transition()
-    .duration(500)
-    .call(yAxis);
-  
-  // Update axis labels
-  const yLabelText = state.metric === 'confirmed' 
-    ? state.isNormalized ? "Cases per 100k population" : "Total Cases" 
-    : state.metric === 'deaths' 
-      ? state.isNormalized ? "Deaths per 100k population" : "Total Deaths" 
-      : state.isNormalized ? "Recovered per 100k population" : "Total Recovered";
-  
-  svg.select(".y-axis-label").text(yLabelText);
-  
-  // Create color scale for multiple lines
-  const color = d3.scaleOrdinal(d3.schemeCategory10);
-  
-  // Bind data to lines
-  const lines = svg.select(".lines").selectAll(".line-path")
-    .data(Object.entries(processedData), d => d[0]);
-  
-  // Exit
-  lines.exit().remove();
-  
-  // Enter
-  const linesEnter = lines.enter()
-    .append("path")
-    .attr("class", "line-path")
-    .attr("fill", "none")
-    .attr("stroke-width", 2.5)
-    .attr("opacity", 0.8);
-  
-  // Update + Enter
-  linesEnter.merge(lines)
-    .transition()
-    .duration(500)
-    .attr("d", d => line(d[1]))
-    .attr("stroke", (d, i) => color(d[0]));
-  
-  // Add hover events for lines
-  svg.selectAll(".line-path")
-    .on("mouseover", function(event, d) {
-      d3.select(this)
-        .attr("stroke-width", 4)
-        .attr("opacity", 1);
       
-      // Get the most recent value
-      const lastPoint = d[1][d[1].length - 1];
-      const tooltipContent = `
-        <strong>${d[0]}</strong><br>
-        Latest ${state.metric}: ${formatUtils.formatNumber(lastPoint.value)}
-        ${state.isNormalized ? " per 100k" : ""}
-      `;
+      // Parse dates for the x-axis
+      const parseDate = d3.timeParse("%m/%d/%y");
       
-      uiUtils.showTooltip(tooltipContent, event);
-    })
-    .on("mousemove", function(event) {
-      elements.tooltip
-        .style("left", `${event.pageX + 10}px`)
-        .style("top", `${event.pageY + 10}px`);
-    })
-    .on("mouseout", function() {
-      d3.select(this)
+      // Process data for all countries/world
+      const processedData = {};
+      let allValues = [];
+      
+      Object.entries(timeSeriesData).forEach(([country, data]) => {
+        processedData[country] = data.map(d => {
+          const value = d.value;
+          allValues.push(value);
+          return {
+            date: parseDate(d.date),
+            value: value
+          };
+        });
+      });
+      
+      // Only include dates within the selected range
+      const startDate = parseDate(state.dates[state.startDateIndex]);
+      const endDate = parseDate(state.dates[state.endDateIndex]);
+      
+      Object.keys(processedData).forEach(country => {
+        processedData[country] = processedData[country].filter(d => 
+          d.date >= startDate && d.date <= endDate
+        );
+      });
+      
+      // Set up scales
+      const xScale = d3.scaleTime()
+        .domain([startDate, endDate])
+        .range([0, innerWidth]);
+      
+      const yScale = d3.scaleLinear()
+        .domain([0, d3.max(allValues) * 1.1]) // Add 10% padding
+        .range([innerHeight, 0])
+        .nice();
+      
+      // Create line generator
+      const line = d3.line()
+        .x(d => xScale(d.date))
+        .y(d => yScale(d.value))
+        .curve(d3.curveMonotoneX); // Smoother curve
+      
+      // Update axes
+      const xAxis = d3.axisBottom(xScale)
+        .ticks(width > 600 ? 10 : 5)
+        .tickFormat(d3.timeFormat("%b, %Y"));
+      
+      const yAxis = d3.axisLeft(yScale)
+        .ticks(10)
+        .tickFormat(state.isNormalized 
+          ? d => d.toFixed(0)
+          : d3.format(".2~s"));
+      
+      svg.select(".x-axis")
+        .transition()
+        .duration(500)
+        .call(xAxis)
+        .selectAll("text")
+        .style("text-anchor", "end")
+        .attr("dx", "-.8em")
+        .attr("dy", ".15em")
+        .attr("transform", "rotate(-35)");
+      
+      svg.select(".y-axis")
+        .transition()
+        .duration(500)
+        .call(yAxis);
+      
+      // Update axis labels
+      const yLabelText = state.metric === 'confirmed' 
+        ? state.isNormalized ? "Cases per 100k population" : "Total Cases" 
+        : state.metric === 'deaths' 
+          ? state.isNormalized ? "Deaths per 100k population" : "Total Deaths" 
+          : state.isNormalized ? "Recovered per 100k population" : "Total Recovered";
+      
+      svg.select(".y-axis-label").text(yLabelText);
+      
+      // Create color scale for multiple lines
+      const color = d3.scaleOrdinal(d3.schemeCategory10);
+      
+      // Bind data to lines
+      const lines = svg.select(".lines").selectAll(".line-path")
+        .data(Object.entries(processedData), d => d[0]);
+      
+      // Exit
+      lines.exit().remove();
+      
+      // Enter
+      const linesEnter = lines.enter()
+        .append("path")
+        .attr("class", "line-path")
+        .attr("fill", "none")
         .attr("stroke-width", 2.5)
         .attr("opacity", 0.8);
       
-      uiUtils.hideTooltip();
-    });
-  
-  // Update the legend
-  elements.lineLegend.innerHTML = '';
-  
-  Object.keys(processedData).forEach((country, i) => {
-    const legendItem = document.createElement('div');
-    legendItem.className = 'legend-item';
-    legendItem.innerHTML = `
-      <span class="legend-color" style="background-color: ${color(country)};"></span>
-      <span>${country}</span>
-    `;
-    elements.lineLegend.appendChild(legendItem);
-  });
-}
-
-// Initialize the pie chart visualization
-function initializePieChart() {
-  const svg = elements.pieViz;
-  const width = svg.node().clientWidth;
-  const height = svg.node().clientHeight;
-  
-  // Clear any existing content
-  svg.selectAll("*").remove();
-  
-  // Calculate radius based on the available space
-  const radius = Math.min(width, height) / 2 - 40;
-  
-  // Create main group
-  const g = svg.append("g")
-    .attr("transform", `translate(${width / 2}, ${height / 2})`);
-  
-  // Create groups for pie slices
-  g.append("g").attr("class", "slices");
-  
-  // Create chart title
-  svg.append("text")
-    .attr("class", "pie-title")
-    .attr("x", width / 2)
-    .attr("y", 20)
-    .attr("text-anchor", "middle")
-    .style("font-size", "14px")
-    .style("font-weight", "bold");
-  
-  // Create pie legend
-  const legend = svg.append("g")
-    .attr("class", "pie-legend")
-    .attr("transform", `translate(${width - 160}, ${height / 2 - 40})`);
-  }
-
-// Update the pie chart visualization
-function updatePieChart() {
-  if (!state.dataLoaded) return;
-  
-  const svg = elements.pieViz;
-  const width = svg.node().clientWidth;
-  const height = svg.node().clientHeight;
-  
-  // Calculate radius based on the available space
-  const radius = Math.min(width, height) / 2 - 40;
-  
-  // Get the current date
-  const currentDate = state.dates[state.endDateIndex];
-  
-  // Get data based on selected countries
-  const selectedCountries = Array.from(state.selectedCountries);
-  
-  let confirmedTotal = 0;
-  let deathsTotal = 0;
-  let recoveredTotal = 0;
-  
-  // If no countries are selected, calculate global totals
-  if (selectedCountries.length === 0) {
-    state.confirmedData.forEach(row => {
-      confirmedTotal += +row[currentDate] || 0;
-    });
-    
-    state.deathsData.forEach(row => {
-      deathsTotal += +row[currentDate] || 0;
-    });
-    
-    state.recoveredData.forEach(row => {
-      recoveredTotal += +row[currentDate] || 0;
-    });
-  } else {
-    // Calculate totals for selected countries
-    selectedCountries.forEach(country => {
-      // Confirmed cases
-      state.confirmedData
-        .filter(row => row['Country/Region'] === country)
-        .forEach(row => {
-          confirmedTotal += +row[currentDate] || 0;
-        });
+      // Update + Enter
+      linesEnter.merge(lines)
+        .transition()
+        .duration(500)
+        .attr("d", d => line(d[1]))
+        .attr("stroke", (d, i) => color(d[0]));
       
-      // Deaths
-      state.deathsData
-        .filter(row => row['Country/Region'] === country)
-        .forEach(row => {
-          deathsTotal += +row[currentDate] || 0;
-        });
-      
-      // Recovered
-      state.recoveredData
-        .filter(row => row['Country/Region'] === country)
-        .forEach(row => {
-          recoveredTotal += +row[currentDate] || 0;
-        });
-    });
-  }
-  
-  // Calculate active cases (confirmed - deaths - recovered)
-  const activeCases = Math.max(0, confirmedTotal - deathsTotal - recoveredTotal);
-  
-  // Define fixed colors for each category to ensure consistency
-  const COLORS = {
-    active: "#1f77b4",    // Blue
-    recovered: "#2ca02c", // Green
-    deaths: "#d62728"     // Red
-  };
-  
-  // Prepare data for pie chart with explicit colors
-  const pieData = [
-    { label: "Active", value: activeCases, color: COLORS.active },
-    { label: "Recovered", value: recoveredTotal, color: COLORS.recovered },
-    { label: "Deaths", value: deathsTotal, color: COLORS.deaths }
-  ].filter(d => d.value > 0); // Remove categories with 0 value
-  
-  // Log the pie data to help with debugging
-  console.log("Pie chart data:", pieData);
-  
-  // Create pie layout
-  const pie = d3.pie()
-    .sort(null) // Don't sort based on value, maintain order
-    .value(d => d.value);
-  
-  // Create arc generator
-  const arc = d3.arc()
-    .innerRadius(0)
-    .outerRadius(radius);
-  
-  // Update chart title
-  let title = "COVID-19 Case Outcomes";
-  if (selectedCountries.length > 0) {
-    if (selectedCountries.length === 1) {
-      title += ` for ${selectedCountries[0]}`;
-    } else {
-      title += ` for Selected Countries`;
-    }
-  } else {
-    title += " Worldwide";
-  }
-  
-  svg.select(".pie-title").text(title);
-  
-  // Only try to create the pie chart if we have data
-  if (pieData.length > 0) {
-    const pieArcs = pie(pieData);
-    
-    // Update pie slices
-    const slices = svg.select(".slices").selectAll("path")
-      .data(pieArcs);
-    
-    // Exit
-    slices.exit().remove();
-    
-    // Enter
-    const slicesEnter = slices.enter()
-      .append("path")
-      .attr("fill", d => {
-        // Use the explicit color from the pieData
-        return d.data.color;
-      })
-      .attr("stroke", "white")
-      .attr("stroke-width", 2)
-      .attr("d", arc) // Set the initial arc path
-      .each(function(d) { this._current = d; }) // Store the current angles
-      .on("mouseover", function(event, d) {
-        d3.select(this).attr("opacity", 0.8);
-        
-        const percentage = (d.data.value / confirmedTotal * 100).toFixed(1);
-        const tooltipContent = `
-          <strong>${d.data.label} Cases</strong><br>
-          ${formatUtils.formatNumber(d.data.value)} (${percentage}% of total)<br>
-          Total Confirmed: ${formatUtils.formatNumber(confirmedTotal)}
-        `;
-        
-        uiUtils.showTooltip(tooltipContent, event);
-      })
-      .on("mousemove", function(event) {
-        elements.tooltip
-          .style("left", `${event.pageX + 10}px`)
+      // Add hover events for lines
+      svg.selectAll(".line-path")
+        .on("mouseover", function(event, d) {
+          d3.select(this)
+            .attr("stroke-width", 4)
+            .attr("opacity", 1);
+          
+          // Get the most recent value
+          const lastPoint = d[1][d[1].length - 1];
+          const tooltipContent = `
+            <strong>${d[0]}</strong><br>
+            Latest ${state.metric}: ${formatUtils.formatNumber(lastPoint.value)}
+            ${state.isNormalized ? " per 100k" : ""}
+          `;
+          
+          uiUtils.showTooltip(tooltipContent, event);
+        })
+        .on("mousemove", function(event) {
+          elements.tooltip
+            .style("left", `${event.pageX + 10}px`)
           .style("top", `${event.pageY + 10}px`);
       })
       .on("mouseout", function() {
-        d3.select(this).attr("opacity", 1);
+        d3.select(this)
+          .attr("stroke-width", 2.5)
+          .attr("opacity", 0.8);
+        
         uiUtils.hideTooltip();
       });
     
-    // Function to interpolate the pie slices
-    function arcTween(a) {
-      const i = d3.interpolate(this._current, a);
-      this._current = i(0);
-      return function(t) {
-        return arc(i(t));
-      };
+    // Update the legend
+    elements.lineLegend.innerHTML = '';
+    
+    Object.keys(processedData).forEach((country, i) => {
+      const legendItem = document.createElement('div');
+      legendItem.className = 'legend-item';
+      legendItem.innerHTML = `
+        <span class="legend-color" style="background-color: ${color(country)};"></span>
+        <span>${country}</span>
+      `;
+      elements.lineLegend.appendChild(legendItem);
+    });
+  }
+
+  // Initialize the pie chart visualization
+  function initializePieChart() {
+    const svg = elements.pieViz;
+    const width = svg.node().clientWidth;
+    const height = svg.node().clientHeight;
+    
+    // Clear any existing content
+    svg.selectAll("*").remove();
+    
+    // Calculate radius based on the available space
+    const radius = Math.min(width, height) / 2 - 40;
+    
+    // Create main group
+    const g = svg.append("g")
+      .attr("transform", `translate(${width / 2}, ${height / 2})`);
+    
+    // Create groups for pie slices
+    g.append("g").attr("class", "slices");
+    
+    // Create chart title
+    svg.append("text")
+      .attr("class", "pie-title")
+      .attr("x", width / 2)
+      .attr("y", 20)
+      .attr("text-anchor", "middle")
+      .style("font-size", "14px")
+      .style("font-weight", "bold");
+    
+    // Create pie legend
+    const legend = svg.append("g")
+      .attr("class", "pie-legend")
+      .attr("transform", `translate(${width - 160}, ${height / 2 - 40})`);
+    }
+
+  // Update the pie chart visualization
+  function updatePieChart() {
+    if (!state.dataLoaded) return;
+    
+    const svg = elements.pieViz;
+    const width = svg.node().clientWidth;
+    const height = svg.node().clientHeight;
+    
+    // Calculate radius based on the available space
+    const radius = Math.min(width, height) / 2 - 40;
+    
+    // Get the current date
+    const currentDate = state.dates[state.endDateIndex];
+    
+    // Get data based on selected countries
+    const selectedCountries = Array.from(state.selectedCountries);
+    
+    let confirmedTotal = 0;
+    let deathsTotal = 0;
+    let recoveredTotal = 0;
+    
+    // If no countries are selected, calculate global totals
+    if (selectedCountries.length === 0) {
+      state.confirmedData.forEach(row => {
+        confirmedTotal += +row[currentDate] || 0;
+      });
+      
+      state.deathsData.forEach(row => {
+        deathsTotal += +row[currentDate] || 0;
+      });
+      
+      state.recoveredData.forEach(row => {
+        recoveredTotal += +row[currentDate] || 0;
+      });
+    } else {
+      // Calculate totals for selected countries
+      selectedCountries.forEach(country => {
+        // Confirmed cases
+        state.confirmedData
+          .filter(row => row['Country/Region'] === country)
+          .forEach(row => {
+            confirmedTotal += +row[currentDate] || 0;
+          });
+        
+        // Deaths
+        state.deathsData
+          .filter(row => row['Country/Region'] === country)
+          .forEach(row => {
+            deathsTotal += +row[currentDate] || 0;
+          });
+        
+        // Recovered
+        state.recoveredData
+          .filter(row => row['Country/Region'] === country)
+          .forEach(row => {
+            recoveredTotal += +row[currentDate] || 0;
+          });
+      });
     }
     
-    // Update + Enter
-    slicesEnter.merge(slices)
-      .transition()
-      .duration(500)
-      .attrTween("d", arcTween)
-      .attr("fill", d => d.data.color); // Ensure color is maintained during transitions
+    // Calculate active cases (confirmed - deaths - recovered)
+    const activeCases = Math.max(0, confirmedTotal - deathsTotal - recoveredTotal);
     
-    // Add slice labels
-    const total = d3.sum(pieData, d => d.value);
+    // Define fixed colors for each category to ensure consistency
+    const COLORS = {
+      active: "#1f77b4",    // Blue
+      recovered: "#2ca02c", // Green
+      deaths: "#d62728"     // Red
+    };
     
-    svg.selectAll(".pie-label").remove();
+    // Prepare data for pie chart with explicit colors
+    const pieData = [
+      { label: "Active", value: activeCases, color: COLORS.active },
+      { label: "Recovered", value: recoveredTotal, color: COLORS.recovered },
+      { label: "Deaths", value: deathsTotal, color: COLORS.deaths }
+    ].filter(d => d.value > 0); // Remove categories with 0 value
     
-    svg.select(".slices").selectAll(".pie-label")
-      .data(pieArcs)
-      .enter()
-      .append("text")
-      .attr("class", "pie-label")
-      .attr("transform", d => {
-        // Position at the centroid of each slice
-        const [x, y] = arc.centroid(d);
-        return `translate(${x}, ${y})`;
-      })
-      .attr("text-anchor", "middle")
-      .style("font-size", "12px")
-      .style("fill", "white")
-      .style("font-weight", "bold")
-      .style("pointer-events", "none")
-      .text(d => {
-        const percent = (d.data.value / total * 100).toFixed(0);
-        return percent > 0 ? `${percent}%` : ""; // Only show label if slice is large enough
-      });
+    // Log the pie data to help with debugging
+    console.log("Pie chart data:", pieData);
     
-    // Update legend
-    svg.select(".pie-legend").selectAll("*").remove();
+    // Create pie layout
+    const pie = d3.pie()
+      .sort(null) // Don't sort based on value, maintain order
+      .value(d => d.value);
     
-    const legend = svg.select(".pie-legend");
+    // Create arc generator
+    const arc = d3.arc()
+      .innerRadius(0)
+      .outerRadius(radius);
     
-    pieData.forEach((d, i) => {
-      // Color rectangle
-      legend.append("rect")
-        .attr("width", 15)
-        .attr("height", 15)
-        .attr("y", i * 25)
-        .attr("fill", d.color);
+    // Update chart title
+    let title = "COVID-19 Case Outcomes";
+    if (selectedCountries.length > 0) {
+      if (selectedCountries.length === 1) {
+        title += ` for ${selectedCountries[0]}`;
+      } else {
+        title += ` for Selected Countries`;
+      }
+    } else {
+      title += " Worldwide";
+    }
+    
+    svg.select(".pie-title").text(title);
+    
+    // Only try to create the pie chart if we have data
+    if (pieData.length > 0) {
+      const pieArcs = pie(pieData);
       
-      // Label
+      // Update pie slices
+      const slices = svg.select(".slices").selectAll("path")
+        .data(pieArcs);
+      
+      // Exit
+      slices.exit().remove();
+      
+      // Enter
+      const slicesEnter = slices.enter()
+        .append("path")
+        .attr("fill", d => {
+          // Use the explicit color from the pieData
+          return d.data.color;
+        })
+        .attr("stroke", "white")
+        .attr("stroke-width", 2)
+        .attr("d", arc) // Set the initial arc path
+        .each(function(d) { this._current = d; }) // Store the current angles
+        .on("mouseover", function(event, d) {
+          d3.select(this).attr("opacity", 0.8);
+          
+          const percentage = (d.data.value / confirmedTotal * 100).toFixed(1);
+          const tooltipContent = `
+            <strong>${d.data.label} Cases</strong><br>
+            ${formatUtils.formatNumber(d.data.value)} (${percentage}% of total)<br>
+            Total Confirmed: ${formatUtils.formatNumber(confirmedTotal)}
+          `;
+          
+          uiUtils.showTooltip(tooltipContent, event);
+        })
+        .on("mousemove", function(event) {
+          elements.tooltip
+            .style("left", `${event.pageX + 10}px`)
+            .style("top", `${event.pageY + 10}px`);
+        })
+        .on("mouseout", function() {
+          d3.select(this).attr("opacity", 1);
+          uiUtils.hideTooltip();
+        });
+      
+      // Function to interpolate the pie slices
+      function arcTween(a) {
+        const i = d3.interpolate(this._current, a);
+        this._current = i(0);
+        return function(t) {
+          return arc(i(t));
+        };
+      }
+      
+      // Update + Enter
+      slicesEnter.merge(slices)
+        .transition()
+        .duration(500)
+        .attrTween("d", arcTween)
+        .attr("fill", d => d.data.color); // Ensure color is maintained during transitions
+      
+      // Add slice labels
+      const total = d3.sum(pieData, d => d.value);
+      
+      svg.selectAll(".pie-label").remove();
+      
+      svg.select(".slices").selectAll(".pie-label")
+        .data(pieArcs)
+        .enter()
+        .append("text")
+        .attr("class", "pie-label")
+        .attr("transform", d => {
+          // Position at the centroid of each slice
+          const [x, y] = arc.centroid(d);
+          return `translate(${x}, ${y})`;
+        })
+        .attr("text-anchor", "middle")
+        .style("font-size", "12px")
+        .style("fill", "white")
+        .style("font-weight", "bold")
+        .style("pointer-events", "none")
+        .text(d => {
+          const percent = (d.data.value / total * 100).toFixed(0);
+          return percent > 0 ? `${percent}%` : ""; // Only show label if slice is large enough
+        });
+      
+      // Update legend
+      svg.select(".pie-legend").selectAll("*").remove();
+      
+      const legend = svg.select(".pie-legend");
+      
+      pieData.forEach((d, i) => {
+        // Color rectangle
+        legend.append("rect")
+          .attr("width", 15)
+          .attr("height", 15)
+          .attr("y", i * 25)
+          .attr("fill", d.color);
+        
+        // Label
+        legend.append("text")
+          .attr("x", 25)
+          .attr("y", i * 25 + 12.5)
+          .style("font-size", "10.5px")
+          .text(`${d.label}: ${formatUtils.formatNumber(d.value)}`);
+      });
+      
+      // Add total label
       legend.append("text")
-        .attr("x", 25)
-        .attr("y", i * 25 + 12.5)
-        .style("font-size", "10.5px")
-        .text(`${d.label}: ${formatUtils.formatNumber(d.value)}`);
-    });
-    
-    // Add total label
-    legend.append("text")
-      .attr("y", pieData.length * 25 + 12.5)
-      .style("font-size", "12px")
-      .style("font-weight", "bold")
-      .text(`Total: ${formatUtils.formatNumber(confirmedTotal)}`);
-  } else {
-    // If no data, show a message
-    svg.select(".slices").selectAll("*").remove();
-    svg.select(".pie-legend").selectAll("*").remove();
-    
-    svg.select(".slices")
-      .append("text")
-      .attr("text-anchor", "middle")
-      .attr("y", 20)
-      .style("font-size", "14px")
-      .text("No data available for the selected criteria");
+        .attr("y", pieData.length * 25 + 12.5)
+        .style("font-size", "12px")
+        .style("font-weight", "bold")
+        .text(`Total: ${formatUtils.formatNumber(confirmedTotal)}`);
+    } else {
+      // If no data, show a message
+      svg.select(".slices").selectAll("*").remove();
+      svg.select(".pie-legend").selectAll("*").remove();
+      
+      svg.select(".slices")
+        .append("text")
+        .attr("text-anchor", "middle")
+        .attr("y", 20)
+        .style("font-size", "14px")
+        .text("No data available for the selected criteria");
+    }
   }
-}
-    
+      
     // Initialize the application
     (function init() {
       // Set up event listeners
