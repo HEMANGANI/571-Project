@@ -1155,6 +1155,7 @@
       updateLineChart();
       updatePieChart();
     }
+    
     function findDateIndexByName(dateStr) {
       return state.dates.findIndex(date => {
         // Format both dates the same way for comparison
@@ -2325,278 +2326,278 @@
     });
   }
 
-  // Initialize the pie chart visualization
-  function initializePieChart() {
-    const svg = elements.pieViz;
-    const width = svg.node().clientWidth;
-    const height = svg.node().clientHeight;
-    
-    // Clear any existing content
-    svg.selectAll("*").remove();
-    
-    // Calculate radius based on the available space
-    const radius = Math.min(width, height) / 2 - 40;
-    
-    // Create main group
-    const g = svg.append("g")
-      .attr("transform", `translate(${width / 2}, ${height / 2})`);
-    
-    // Create groups for pie slices
-    g.append("g").attr("class", "slices");
-    
-    // Create chart title
-    svg.append("text")
-      .attr("class", "pie-title")
-      .attr("x", width / 2)
-      .attr("y", 20)
-      .attr("text-anchor", "middle")
-      .style("font-size", "14px")
-      .style("font-weight", "bold");
-    
-    // Create pie legend
-    const legend = svg.append("g")
-      .attr("class", "pie-legend")
-      .attr("transform", `translate(${width - 160}, ${height / 2 - 40})`);
-    }
-
-  // Update the pie chart visualization
-  function updatePieChart() {
-    if (!state.dataLoaded) return;
-    
-    const svg = elements.pieViz;
-    const width = svg.node().clientWidth;
-    const height = svg.node().clientHeight;
-    
-    // Calculate radius based on the available space
-    const radius = Math.min(width, height) / 2 - 40;
-    
-    // Get the current date
-    const currentDate = state.dates[state.endDateIndex];
-    
-    // Get data based on selected countries
-    const selectedCountries = Array.from(state.selectedCountries);
-    
-    let confirmedTotal = 0;
-    let deathsTotal = 0;
-    let recoveredTotal = 0;
-    
-    // If no countries are selected, calculate global totals
-    if (selectedCountries.length === 0) {
-      state.confirmedData.forEach(row => {
-        confirmedTotal += +row[currentDate] || 0;
-      });
+    // Initialize the pie chart visualization
+    function initializePieChart() {
+      const svg = elements.pieViz;
+      const width = svg.node().clientWidth;
+      const height = svg.node().clientHeight;
       
-      state.deathsData.forEach(row => {
-        deathsTotal += +row[currentDate] || 0;
-      });
+      // Clear any existing content
+      svg.selectAll("*").remove();
       
-      state.recoveredData.forEach(row => {
-        recoveredTotal += +row[currentDate] || 0;
-      });
-    } else {
-      // Calculate totals for selected countries
-      selectedCountries.forEach(country => {
-        // Confirmed cases
-        state.confirmedData
-          .filter(row => row['Country/Region'] === country)
-          .forEach(row => {
-            confirmedTotal += +row[currentDate] || 0;
-          });
-        
-        // Deaths
-        state.deathsData
-          .filter(row => row['Country/Region'] === country)
-          .forEach(row => {
-            deathsTotal += +row[currentDate] || 0;
-          });
-        
-        // Recovered
-        state.recoveredData
-          .filter(row => row['Country/Region'] === country)
-          .forEach(row => {
-            recoveredTotal += +row[currentDate] || 0;
-          });
-      });
-    }
-    
-    // Calculate active cases (confirmed - deaths - recovered)
-    const activeCases = Math.max(0, confirmedTotal - deathsTotal - recoveredTotal);
-    
-    // Define fixed colors for each category to ensure consistency
-    const COLORS = {
-      active: "#1f77b4",    // Blue
-      recovered: "#2ca02c", // Green
-      deaths: "#d62728"     // Red
-    };
-    
-    // Prepare data for pie chart with explicit colors
-    const pieData = [
-      { label: "Active", value: activeCases, color: COLORS.active },
-      { label: "Recovered", value: recoveredTotal, color: COLORS.recovered },
-      { label: "Deaths", value: deathsTotal, color: COLORS.deaths }
-    ].filter(d => d.value > 0); // Remove categories with 0 value
-    
-    // Log the pie data to help with debugging
-    console.log("Pie chart data:", pieData);
-    
-    // Create pie layout
-    const pie = d3.pie()
-      .sort(null) // Don't sort based on value, maintain order
-      .value(d => d.value);
-    
-    // Create arc generator
-    const arc = d3.arc()
-      .innerRadius(0)
-      .outerRadius(radius);
-    
-    // Update chart title
-    let title = "COVID-19 Case Outcomes";
-    if (selectedCountries.length > 0) {
-      if (selectedCountries.length === 1) {
-        title += ` for ${selectedCountries[0]}`;
-      } else {
-        title += ` for Selected Countries`;
-      }
-    } else {
-      title += " Worldwide";
-    }
-    
-    svg.select(".pie-title").text(title);
-    
-    // Only try to create the pie chart if we have data
-    if (pieData.length > 0) {
-      const pieArcs = pie(pieData);
+      // Calculate radius based on the available space
+      const radius = Math.min(width, height) / 2 - 40;
       
-      // Update pie slices
-      const slices = svg.select(".slices").selectAll("path")
-        .data(pieArcs);
+      // Create main group
+      const g = svg.append("g")
+        .attr("transform", `translate(${width / 2}, ${height / 2})`);
       
-      // Exit
-      slices.exit().remove();
+      // Create groups for pie slices
+      g.append("g").attr("class", "slices");
       
-      // Enter
-      const slicesEnter = slices.enter()
-        .append("path")
-        .attr("fill", d => {
-          // Use the explicit color from the pieData
-          return d.data.color;
-        })
-        .attr("stroke", "white")
-        .attr("stroke-width", 2)
-        .attr("d", arc) // Set the initial arc path
-        .each(function(d) { this._current = d; }) // Store the current angles
-        .on("mouseover", function(event, d) {
-          d3.select(this).attr("opacity", 0.8);
-          
-          const percentage = (d.data.value / confirmedTotal * 100).toFixed(1);
-          const tooltipContent = `
-            <strong>${d.data.label} Cases</strong><br>
-            ${formatUtils.formatNumber(d.data.value)} (${percentage}% of total)<br>
-            Total Confirmed: ${formatUtils.formatNumber(confirmedTotal)}
-          `;
-          
-          uiUtils.showTooltip(tooltipContent, event);
-        })
-        .on("mousemove", function(event) {
-          elements.tooltip
-            .style("left", `${event.pageX + 10}px`)
-            .style("top", `${event.pageY + 10}px`);
-        })
-        .on("mouseout", function() {
-          d3.select(this).attr("opacity", 1);
-          uiUtils.hideTooltip();
-        });
-      
-      // Function to interpolate the pie slices
-      function arcTween(a) {
-        const i = d3.interpolate(this._current, a);
-        this._current = i(0);
-        return function(t) {
-          return arc(i(t));
-        };
-      }
-      
-      // Update + Enter
-      slicesEnter.merge(slices)
-        .transition()
-        .duration(500)
-        .attrTween("d", arcTween)
-        .attr("fill", d => d.data.color); // Ensure color is maintained during transitions
-      
-      // Add slice labels
-      const total = d3.sum(pieData, d => d.value);
-      
-      svg.selectAll(".pie-label").remove();
-      
-      svg.select(".slices").selectAll(".pie-label")
-        .data(pieArcs)
-        .enter()
-        .append("text")
-        .attr("class", "pie-label")
-        .attr("transform", d => {
-          // Position at the centroid of each slice
-          const [x, y] = arc.centroid(d);
-          return `translate(${x}, ${y})`;
-        })
-        .attr("text-anchor", "middle")
-        .style("font-size", "12px")
-        .style("fill", "white")
-        .style("font-weight", "bold")
-        .style("pointer-events", "none")
-        .text(d => {
-          const percent = (d.data.value / total * 100).toFixed(0);
-          return percent > 0 ? `${percent}%` : ""; // Only show label if slice is large enough
-        });
-      
-      // Update legend
-      svg.select(".pie-legend").selectAll("*").remove();
-      
-      const legend = svg.select(".pie-legend");
-      
-      pieData.forEach((d, i) => {
-        // Color rectangle
-        legend.append("rect")
-          .attr("width", 15)
-          .attr("height", 15)
-          .attr("y", i * 25)
-          .attr("fill", d.color);
-        
-        // Label
-        legend.append("text")
-          .attr("x", 25)
-          .attr("y", i * 25 + 12.5)
-          .style("font-size", "10.5px")
-          .text(`${d.label}: ${formatUtils.formatNumber(d.value)}`);
-      });
-      
-      // Add total label
-      legend.append("text")
-        .attr("y", pieData.length * 25 + 12.5)
-        .style("font-size", "12px")
-        .style("font-weight", "bold")
-        .text(`Total: ${formatUtils.formatNumber(confirmedTotal)}`);
-    } else {
-      // If no data, show a message
-      svg.select(".slices").selectAll("*").remove();
-      svg.select(".pie-legend").selectAll("*").remove();
-      
-      svg.select(".slices")
-        .append("text")
-        .attr("text-anchor", "middle")
+      // Create chart title
+      svg.append("text")
+        .attr("class", "pie-title")
+        .attr("x", width / 2)
         .attr("y", 20)
+        .attr("text-anchor", "middle")
         .style("font-size", "14px")
-        .text("No data available for the selected criteria");
-    }
-  }
+        .style("font-weight", "bold");
       
+      // Create pie legend
+      const legend = svg.append("g")
+        .attr("class", "pie-legend")
+        .attr("transform", `translate(${width - 160}, ${height / 2 - 40})`);
+      }
+
+    // Update the pie chart visualization
+    function updatePieChart() {
+      if (!state.dataLoaded) return;
+      
+      const svg = elements.pieViz;
+      const width = svg.node().clientWidth;
+      const height = svg.node().clientHeight;
+      
+      // Calculate radius based on the available space
+      const radius = Math.min(width, height) / 2 - 40;
+      
+      // Get the current date
+      const currentDate = state.dates[state.endDateIndex];
+      
+      // Get data based on selected countries
+      const selectedCountries = Array.from(state.selectedCountries);
+      
+      let confirmedTotal = 0;
+      let deathsTotal = 0;
+      let recoveredTotal = 0;
+      
+      // If no countries are selected, calculate global totals
+      if (selectedCountries.length === 0) {
+        state.confirmedData.forEach(row => {
+          confirmedTotal += +row[currentDate] || 0;
+        });
+        
+        state.deathsData.forEach(row => {
+          deathsTotal += +row[currentDate] || 0;
+        });
+        
+        state.recoveredData.forEach(row => {
+          recoveredTotal += +row[currentDate] || 0;
+        });
+      } else {
+        // Calculate totals for selected countries
+        selectedCountries.forEach(country => {
+          // Confirmed cases
+          state.confirmedData
+            .filter(row => row['Country/Region'] === country)
+            .forEach(row => {
+              confirmedTotal += +row[currentDate] || 0;
+            });
+          
+          // Deaths
+          state.deathsData
+            .filter(row => row['Country/Region'] === country)
+            .forEach(row => {
+              deathsTotal += +row[currentDate] || 0;
+            });
+          
+          // Recovered
+          state.recoveredData
+            .filter(row => row['Country/Region'] === country)
+            .forEach(row => {
+              recoveredTotal += +row[currentDate] || 0;
+            });
+        });
+      }
+      
+      // Calculate active cases (confirmed - deaths - recovered)
+      const activeCases = Math.max(0, confirmedTotal - deathsTotal - recoveredTotal);
+      
+      // Define fixed colors for each category to ensure consistency
+      const COLORS = {
+        active: "#1f77b4",    // Blue
+        recovered: "#2ca02c", // Green
+        deaths: "#d62728"     // Red
+      };
+      
+      // Prepare data for pie chart with explicit colors
+      const pieData = [
+        { label: "Active", value: activeCases, color: COLORS.active },
+        { label: "Recovered", value: recoveredTotal, color: COLORS.recovered },
+        { label: "Deaths", value: deathsTotal, color: COLORS.deaths }
+      ].filter(d => d.value > 0); // Remove categories with 0 value
+      
+      // Log the pie data to help with debugging
+      console.log("Pie chart data:", pieData);
+      
+      // Create pie layout
+      const pie = d3.pie()
+        .sort(null) // Don't sort based on value, maintain order
+        .value(d => d.value);
+      
+      // Create arc generator
+      const arc = d3.arc()
+        .innerRadius(0)
+        .outerRadius(radius);
+      
+      // Update chart title
+      let title = "COVID-19 Case Outcomes";
+      if (selectedCountries.length > 0) {
+        if (selectedCountries.length === 1) {
+          title += ` for ${selectedCountries[0]}`;
+        } else {
+          title += ` for Selected Countries`;
+        }
+      } else {
+        title += " Worldwide";
+      }
+      
+      svg.select(".pie-title").text(title);
+      
+      // Only try to create the pie chart if we have data
+      if (pieData.length > 0) {
+        const pieArcs = pie(pieData);
+        
+        // Update pie slices
+        const slices = svg.select(".slices").selectAll("path")
+          .data(pieArcs);
+        
+        // Exit
+        slices.exit().remove();
+        
+        // Enter
+        const slicesEnter = slices.enter()
+          .append("path")
+          .attr("fill", d => {
+            // Use the explicit color from the pieData
+            return d.data.color;
+          })
+          .attr("stroke", "white")
+          .attr("stroke-width", 2)
+          .attr("d", arc) // Set the initial arc path
+          .each(function(d) { this._current = d; }) // Store the current angles
+          .on("mouseover", function(event, d) {
+            d3.select(this).attr("opacity", 0.8);
+            
+            const percentage = (d.data.value / confirmedTotal * 100).toFixed(1);
+            const tooltipContent = `
+              <strong>${d.data.label} Cases</strong><br>
+              ${formatUtils.formatNumber(d.data.value)} (${percentage}% of total)<br>
+              Total Confirmed: ${formatUtils.formatNumber(confirmedTotal)}
+            `;
+            
+            uiUtils.showTooltip(tooltipContent, event);
+          })
+          .on("mousemove", function(event) {
+            elements.tooltip
+              .style("left", `${event.pageX + 10}px`)
+              .style("top", `${event.pageY + 10}px`);
+          })
+          .on("mouseout", function() {
+            d3.select(this).attr("opacity", 1);
+            uiUtils.hideTooltip();
+          });
+        
+        // Function to interpolate the pie slices
+        function arcTween(a) {
+          const i = d3.interpolate(this._current, a);
+          this._current = i(0);
+          return function(t) {
+            return arc(i(t));
+          };
+        }
+        
+        // Update + Enter
+        slicesEnter.merge(slices)
+          .transition()
+          .duration(500)
+          .attrTween("d", arcTween)
+          .attr("fill", d => d.data.color); // Ensure color is maintained during transitions
+        
+        // Add slice labels
+        const total = d3.sum(pieData, d => d.value);
+        
+        svg.selectAll(".pie-label").remove();
+        
+        svg.select(".slices").selectAll(".pie-label")
+          .data(pieArcs)
+          .enter()
+          .append("text")
+          .attr("class", "pie-label")
+          .attr("transform", d => {
+            // Position at the centroid of each slice
+            const [x, y] = arc.centroid(d);
+            return `translate(${x}, ${y})`;
+          })
+          .attr("text-anchor", "middle")
+          .style("font-size", "12px")
+          .style("fill", "white")
+          .style("font-weight", "bold")
+          .style("pointer-events", "none")
+          .text(d => {
+            const percent = (d.data.value / total * 100).toFixed(0);
+            return percent > 0 ? `${percent}%` : ""; // Only show label if slice is large enough
+          });
+        
+        // Update legend
+        svg.select(".pie-legend").selectAll("*").remove();
+        
+        const legend = svg.select(".pie-legend");
+        
+        pieData.forEach((d, i) => {
+          // Color rectangle
+          legend.append("rect")
+            .attr("width", 15)
+            .attr("height", 15)
+            .attr("y", i * 25)
+            .attr("fill", d.color);
+          
+          // Label
+          legend.append("text")
+            .attr("x", 25)
+            .attr("y", i * 25 + 12.5)
+            .style("font-size", "10.5px")
+            .text(`${d.label}: ${formatUtils.formatNumber(d.value)}`);
+        });
+        
+        // Add total label
+        legend.append("text")
+          .attr("y", pieData.length * 25 + 12.5)
+          .style("font-size", "12px")
+          .style("font-weight", "bold")
+          .text(`Total: ${formatUtils.formatNumber(confirmedTotal)}`);
+      } else {
+        // If no data, show a message
+        svg.select(".slices").selectAll("*").remove();
+        svg.select(".pie-legend").selectAll("*").remove();
+        
+        svg.select(".slices")
+          .append("text")
+          .attr("text-anchor", "middle")
+          .attr("y", 20)
+          .style("font-size", "14px")
+          .text("No data available for the selected criteria");
+      }
+    }
+        
     // Initialize the application
     (function init() {
-      // Set up event listeners
-      setupEventListeners();
-      
-      // Load data
-      loadData();
-    })();
+        // Set up event listeners
+        setupEventListeners();
+        
+        // Load data
+        loadData();
+      })();
   </script>
 </body>
 </html>
