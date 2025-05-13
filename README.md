@@ -1,137 +1,52 @@
-# COVID-19 Global Data Visualization
+# COVID-19 Data Visualization 
 
 ## Overview
 
-This project presents an interactive, web-based data visualization dashboard for exploring various dimensions of the COVID-19 pandemic. The platform allows users to analyze the spread, severity, recovery trends, and geographic patterns of the pandemic through a series of thoughtfully designed visualizations.
+This submission contains an interactive COVID-19 dashboard developed as part of our data visualization project. The goal was to design and implement a web-based platform that allows users to explore various dimensions of the COVID-19 pandemic using multiple types of visualizations.
 
-## Project Links
+The dashboard enables insights into the global spread, severity, death and recovery rates, and regional variations through well-justified and interactive charts. All visualizations were implemented using D3.js, and data was preprocessed in Excel.
 
-- Project Website: [https://hemangani.github.io/571-Project/](https://hemangani.github.io/571-Project/)
-- Screencast Video: [https://www.youtube.com/watch?v=cxhG2qFF9Ps](https://www.youtube.com/watch?v=cxhG2qFF9Ps)
+### What Is Included
 
-## Code and Libraries
+**Our Code Includes:**
 
-### Our Code
+- D3.js scripts for all visualizations
+- Custom JavaScript logic for interactivity, filtering, and state updates
+- Tooltip and hover implementations
+- Dropdown and slider controls
+- HTML/CSS for layout and responsiveness
 
-- D3.js visualizations
-- Interactive UI logic for selection, filtering, and rendering
-- Tooltip and dynamic interactivity for charts and maps
-- Implementation of:
-  - Time Series Line Chart
-  - Bar Charts
-  - Choropleth Map
-  - Pie Chart
-  - Death Rate Dashboard
+**External Libraries Used:**
 
-### External Libraries
+- [D3.js](https://d3js.org/): For data-driven document manipulation and rendering
+- [TopoJSON](https://github.com/topojson/topojson): For rendering world map boundaries
+- Bootstrap: For layout and basic styling
+- Google Fonts: For improved typography
 
-- D3.js: For all visualizations
-- TopoJSON: For world map rendering
-- Bootstrap/CSS: For layout and styling
-- MS Excel: Used for initial data preprocessing
+### Project Links
 
-## Visualizations Implemented
+- **Live Website:** [https://hemangani.github.io/571-Project/](https://hemangani.github.io/571-Project/)
+- **Screencast Video:** [https://www.youtube.com/watch?v=cxhG2qFF9Ps](https://www.youtube.com/watch?v=cxhG2qFF9Ps)
 
-### 1. Time Series Line Chart (Country Comparison)
+## Non-Obvious Interface Features
 
-**Intent**: Track confirmed cases over time for selected countries.
+- **Country Selection on World Map:**  
+  In the Time Series Line Chart, users can click on a country from the choropleth map to add its data to the time series plot. This dynamic interaction allows comparison of multiple countries’ trends without navigating away from the map.
 
-**Functionality**:
-- Country selection via world map
-- Dynamic update on selection; "Reset" button to clear
-- Distinct color lines for comparison
+- **“Reset” Button:**  
+  In the Time Series Line Chart, a “Reset” button clears selected countries from the chart, allowing the user to start a fresh comparison.
 
-**Design Considerations**:
-- Uses position along a common scale (y-axis) for trend accuracy
-- Colors help differentiate multiple countries
+- **Interactive Date Slider:**  
+  Present in both the bar chart and choropleth visualizations, the date slider lets users view trends across custom time ranges. It updates the view in real time and is linked to the filtered dataset.
 
-### 2. Global Bar Chart (Confirmed Cases by Country)
+- **Normalize by Population Option:**  
+  In the Bar Chart view, a checkbox allows users to toggle between raw totals and per capita metrics. This helps avoid misleading comparisons between countries with vastly different populations.
 
-**Intent**: Highlight top countries based on confirmed cases or deaths.
+- **Hover Tooltips:**  
+  All charts include dynamic tooltips that reveal precise values (counts or percentages), enabling more detailed inspection without cluttering the interface.
 
-**Functionality**:
-- Choose metric (Confirmed Cases or Deaths)
-- View top N countries (e.g., Top 10, Top 20)
-- Normalize by population
-- Adjustable date range with slider
+- **Threshold Filter in Death Rate Dashboard:**  
+  To ensure meaningful comparisons, users can filter countries by setting a minimum confirmed cases threshold. This excludes unreliable or misleading high death rates in countries with very low case counts.
 
-**Design Considerations**:
-- Sorted vertical bars for readability
-- Clear labeling of date range
-
-### 3. Global Choropleth Map (Time Series)
-
-**Intent**: Provide a spatial view of pandemic severity over time.
-
-**Functionality**:
-- Select metric (Confirmed Cases or Deaths)
-- Animate data over time with slider
-- Color intensity indicates value
-
-**Design Considerations**:
-- Geographic encoding allows intuitive interpretation
-- Uses standard choropleth color scales
-
-### 4. Death Rate Dashboard (Bar Chart)
-
-**Intent**: Identify countries with the highest death rates relative to total cases.
-
-**Functionality**:
-- Filter by year and minimum case threshold
-- Sort in ascending or descending order
-
-**Design Considerations**:
-- Accurate length encoding for comparison
-- Tooltips show exact percentages and totals
-
-### 5. Recovery vs. Death Pie Chart
-
-**Intent**: Compare recoveries and deaths as parts of a whole.
-
-**Functionality**:
-- Select a country and year
-- View proportional segments of recoveries vs. deaths
-
-**Design Considerations**:
-- Hover tooltips show precise percentage values
-- Simple and intuitive visual
-
-**Note**: The recovered dataset is slightly corrupted and only available for a specific period. Recovery-related visualizations are restricted to that time range.
-
-### 6. 6-Month Comparative Bar Chart
-
-**Intent**: Show how COVID-19 metrics evolved across major 6-month phases.
-
-**Functionality**:
-- Select country and metric (Confirmed Cases or Deaths)
-- View side-by-side bar comparisons
-
-**Design Considerations**:
-- Hovering reveals exact case numbers
-- Facilitates comparison across defined periods
-
-## Visualizations Considered but Not Implemented
-
-### Clustered Column Chart with All Three Metrics
-
-- Not implemented to reduce visual clutter and maintain clarity
-- Simplified charts align with the principle of maximizing data-ink ratio
-
-### Death vs. Recovery Rate Stacked Bar Chart
-
-- Replaced with a pie chart and bar chart for better precision and interpretability
-
-## Evaluation and Insights
-
-The dashboard revealed multiple valuable insights:
-
-- **Temporal Spread**: Line charts showed how countries experienced peaks at different times. For example, Ireland had wave-like patterns, while Afghanistan’s pattern was more erratic.
-- **Geographic Impact**: The choropleth map illustrated persistent hotspots like the US, India, and Brazil, while some smaller nations showed high impact relative to population.
-- **Death Trends**: The death rate dashboard highlighted how some countries improved significantly from one year to the next.
-- **Comparative Patterns**: Bar charts and time series visualizations revealed spikes correlated with new variants and changes in lockdown policies, especially in late 2020.
-
-## Notes and Known Limitations
-
-- The recovered data file is partially corrupted and available only for a limited period. Recovery-based visualizations are therefore limited to that timeframe.
-- Preprocessing was done manually in MS Excel to ensure alignment and consistency.
-
+- **Recovery Pie Chart Time Range Restriction:**  
+  Due to corruption in the recovered dataset, recovery data is only available for a limited time period. As a result, the dropdowns in the Pie Chart are limited to years where valid recovery data is present.
