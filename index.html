@@ -264,11 +264,41 @@
       }
     }
 
+    /* Center the video container */
+    .video-container {
+        width: 100%;
+        max-width: 800px; 
+        margin: 0 auto; /* This centers the container horizontally */
+        padding: 20px 0;
+    }
+
+    /* Make the video responsive */
+    .video-container iframe {
+        width: 100%;
+        aspect-ratio: 16/9; /* Maintains video proportions */
+        border: none;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1); 
+    }
+
+    /* Center the section heading */
+    section h2 {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+
+    section {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+    }
+
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
 </head>
 <body>
+
   <div class="container">
     <h1 class="dashboard-title">COVID-19 Global Dashboard</h1>
     
@@ -386,6 +416,20 @@
     <!-- Global Tooltip -->
     <div id="tooltip" class="tooltip"></div>
   </div>
+
+  <section>
+      <h2>Project Screencast</h2>
+      <div class="video-container">
+          <!-- Replace the src URL with your actual video URL -->
+          <iframe 
+              src="https://www.youtube.com/embed/cxhG2qFF9Ps" 
+              title="Project Screencast" 
+              frameborder="0" 
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+              allowfullscreen>
+          </iframe>
+      </div>
+  </section>
 
   <script>
     // Global app state
