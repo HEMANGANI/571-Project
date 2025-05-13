@@ -45,8 +45,5 @@ The dashboard enables insights into the global spread, severity, death and recov
 - **Hover Tooltips:**  
   All charts include dynamic tooltips that reveal precise values (counts or percentages), enabling more detailed inspection without cluttering the interface.
 
-- **Threshold Filter in Death Rate Dashboard:**  
-  To ensure meaningful comparisons, users can filter countries by setting a minimum confirmed cases threshold. This excludes unreliable or misleading high death rates in countries with very low case counts.
-
 - **Recovery Pie Chart Time Range Restriction:**  
   Due to corruption in the recovered dataset, recovery data is only available for a limited time period. As a result, the dropdowns in the Pie Chart are limited to years where valid recovery data is present.
